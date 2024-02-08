@@ -1,5 +1,6 @@
 pub mod app;
-pub mod app_error_view;
+mod app_error_view;
+mod style_utils;
 
 #[cfg(feature = "ssr")]
 pub mod serve_file;

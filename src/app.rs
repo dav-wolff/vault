@@ -4,11 +4,18 @@ use leptos_meta::*;
 use leptos_router::*;
 use stylance::import_style;
 
+mod input;
+mod login;
+
+use login::Login;
+
 import_style!(style, "app.css");
 
 #[component]
 pub fn App() -> impl IntoView {
 	provide_meta_context();
+	
+	let (is_logged_in, set_logged_in) = create_signal(false);
 	
 	view! {
 		<Title text="Vault"/>
@@ -25,7 +32,14 @@ pub fn App() -> impl IntoView {
 			<header class={style::title}>Vault</header>
 			<main class={style::content}>
 				<Routes>
-					<Route path="" view=|| "Content" />
+					<Route path="" view=move || view! {
+						<Show
+							when=move || is_logged_in()
+							fallback=move || view! {<Login set_logged_in />}
+						>
+							<h1>Welcome!</h1>
+						</Show>
+					} />
 				</Routes>
 			</main>
 		</Router>

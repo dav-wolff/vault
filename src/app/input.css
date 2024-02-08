@@ -1,0 +1,22 @@
+.input, .error_input {
+	width: 100%;
+	box-sizing: border-box;
+	font-size: 20pt;
+	border: none;
+	background-color: #6ea2f7;
+	border-bottom: 1px solid black;
+	border-top: 1px solid transparent;
+}
+
+.error_input {
+	border: 1px solid #DD403A;
+}
+
+.error_message {
+	margin: 2px 0 0 0;
+	padding: 2px 2px 2px 6px;
+	border-radius: 0 0 8px 8px;
+	background-color: #DD403A;
+	color: white;
+	font-size: 14pt;
+}
