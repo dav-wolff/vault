@@ -1,9 +1,9 @@
 #[cfg(feature = "ssr")]
 #[tokio::main]
 async fn main() {
-	use axum::Router;
+	use axum::{Router, routing::post};
 	use leptos::*;
-	use leptos_axum::{generate_route_list, LeptosRoutes};
+	use leptos_axum::{generate_route_list, handle_server_fns, LeptosRoutes};
 	use tokio::net::TcpListener;
 	
 	use vault::app::App;
@@ -17,6 +17,7 @@ async fn main() {
 	
 	let app = Router::new()
 		.leptos_routes(&leptos_options, routes, App)
+		.route("/api/*fn_name", post(handle_server_fns))
 		.fallback(serve_file)
 		.with_state(leptos_options);
 	

@@ -1,4 +1,4 @@
-use leptos::{ev::KeyboardEvent, leptos_dom::logging::console_log, *};
+use leptos::{ev::KeyboardEvent, *};
 use stylance::import_style;
 
 import_style!(style, "input.css");

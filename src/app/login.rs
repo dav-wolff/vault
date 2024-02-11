@@ -1,7 +1,7 @@
-use leptos::{leptos_dom::logging::console_log, *};
+use leptos::{leptos_dom::logging::{console_error, console_log}, *};
 use stylance::import_style;
 
-use crate::style_utils::classes;
+use crate::{account::{self, CreateAccountError, LoginError}, style_utils::classes};
 
 use super::input::{TextInput, InputType};
 
@@ -32,7 +32,7 @@ pub fn Login(
 }
 
 #[component]
-pub fn LoginForm(
+fn LoginForm(
 	set_form: WriteSignal<Form>,
 	set_logged_in: WriteSignal<bool>,
 ) -> impl IntoView {
@@ -54,7 +54,7 @@ pub fn LoginForm(
 	let login = move |()| {
 		clear_errors();
 		
-		with!(|username, password| {
+		let Some(login_future) = with!(|username, password| {
 			if username.is_empty() {
 				username_error.set(Some("Please enter a username"));
 			}
@@ -64,20 +64,30 @@ pub fn LoginForm(
 			}
 			
 			if username.is_empty() || password.is_empty() {
-				return;
+				return None;
 			}
 			
-			if username != "Test" {
-				username_error.set(Some("Unknown user"));
-				return;
+			Some(account::login(username.clone(), password.clone()))
+		}) else {
+			return;
+		};
+		
+		spawn_local(async move {
+			match login_future.await {
+				Err(_) => {
+					// TODO: handle error
+					console_error("Error logging in");
+				},
+				Ok(Err(LoginError::UnknownUser)) => {
+					username_error.set(Some("Unknown user"));
+				},
+				Ok(Err(LoginError::IncorrectPassword)) => {
+					password_error.set(Some("Incorrect password"));
+				},
+				Ok(Ok(())) => {
+					set_logged_in(true);
+				},
 			}
-			
-			if password != "1234" {
-				password_error.set(Some("Incorrect password"));
-				return;
-			}
-			
-			set_logged_in(true);
 		});
 	};
 	
@@ -103,7 +113,7 @@ pub fn LoginForm(
 }
 
 #[component]
-pub fn CreateAccountForm(
+fn CreateAccountForm(
 	set_form: WriteSignal<Form>,
 	set_logged_in: WriteSignal<bool>,
 ) -> impl IntoView {
@@ -131,7 +141,7 @@ pub fn CreateAccountForm(
 	let create_account = move |()| {
 		clear_errors();
 		
-		with!(|username, password, password_confirm| {
+		let Some(create_account_future) = with!(|username, password, password_confirm| {
 			if username.is_empty() {
 				username_error.set(Some("Please enter a username"));
 			}
@@ -147,11 +157,28 @@ pub fn CreateAccountForm(
 			}
 			
 			if username.is_empty() || password.is_empty() || password != password_confirm {
-				return;
+				return None;
 			}
 			
-			set_logged_in(true);
-		})
+			Some(account::create_account(username.clone()))
+		}) else {
+			return;
+		};
+		
+		spawn_local(async move {
+			match create_account_future.await {
+				Err(_) => {
+					//TODO: handle error
+					console_error("Error logging in");
+				},
+				Ok(Err(CreateAccountError::UsernameTaken)) => {
+					username_error.set(Some("Username is already taken"));
+				},
+				Ok(Ok(())) => {
+					set_logged_in(true);
+				},
+			}
+		});
 	};
 	
 	view! {

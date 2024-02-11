@@ -1,4 +1,5 @@
 pub mod app;
+mod account;
 mod app_error_view;
 mod style_utils;
 
