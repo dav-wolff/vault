@@ -19,13 +19,10 @@ pub struct Salt {
 	data: [u8; 32],
 }
 
-impl Salt {
-	//TODO: remove
-	pub fn mock_salt() -> Self {
-		Self {
-			data: [0; 32],
-		}
-	}
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PasswordHash {
+	#[serde(with = "BigArray")]
+	data: [u8; 64],
 }
 
 impl Debug for Salt {
@@ -34,14 +31,38 @@ impl Debug for Salt {
 	}
 }
 
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PasswordHash {
-	#[serde(with = "BigArray")]
-	data: [u8; 64],
-}
-
 impl Debug for PasswordHash {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		write!(f, "PasswordHash(...)")
+	}
+}
+
+#[cfg(feature = "ssr")]
+mod db_acces {
+	use super::*;
+	use crate::db;
+	
+	impl Salt {
+		pub fn from_db(data: [u8; 32], _: db::Token) -> Self {
+			Self {
+				data,
+			}
+		}
+		
+		pub fn to_db(&self, _: db::Token) -> [u8; 32] {
+			self.data
+		}
+	}
+	
+	impl PasswordHash {
+		pub fn from_db(data: [u8; 64], _: db::Token) -> Self {
+			Self {
+				data,
+			}
+		}
+		
+		pub fn to_db(&self, _: db::Token) -> [u8; 64] {
+			self.data
+		}
 	}
 }

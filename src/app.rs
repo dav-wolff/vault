@@ -34,7 +34,7 @@ pub fn App() -> impl IntoView {
 				<Routes>
 					<Route path="" view=move || view! {
 						<Show
-							when=move || is_logged_in()
+							when=is_logged_in
 							fallback=move || view! {<Login set_logged_in />}
 						>
 							<h1>Welcome!</h1>

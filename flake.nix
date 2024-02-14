@@ -144,6 +144,10 @@
 				devShells.default = craneLib.devShell {
 					checks = self.checks.${system};
 					
+					shellHook = ''
+						export VAULT_DB_FILE="dev_data/vault.db"
+					'';
+					
 					packages = with pkgs; [
 						fenixRustAnalyzer
 						just

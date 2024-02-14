@@ -1,11 +1,17 @@
-pub mod app;
+#[cfg(feature = "ssr")]
+pub mod server;
+
+#[cfg(feature = "ssr")]
+mod db;
+
+#[cfg(not(feature = "ssr"))]
+mod db {}
+
+mod app;
 mod utils;
 mod account;
 mod app_error_view;
 mod vault;
-
-#[cfg(feature = "ssr")]
-pub mod serve_file;
 
 #[cfg(feature = "hydrate")]
 #[wasm_bindgen::prelude::wasm_bindgen]

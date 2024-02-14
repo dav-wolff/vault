@@ -22,6 +22,7 @@ tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 tower = { version = "0.4", optional = true }
 tower-http = { version = "0.5", features = ["fs"], optional = true }
 tracing = { version = "0.1", optional = true }
+rusqlite = { version = "0.30", features = ["bundled"], optional = true }
 
 console_error_panic_hook = { version = "0.1", optional = true }
 getrandom = { version = "0.2", features = ["js"], optional = true }
@@ -36,6 +37,7 @@ ssr = [
 	"dep:axum",
 	"dep:leptos_axum",
 	"dep:tracing",
+	"dep:rusqlite",
 	"leptos/ssr",
 	"leptos_meta/ssr",
 	"leptos_router/ssr",

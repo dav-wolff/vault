@@ -1,8 +1,12 @@
-use leptos::{server, ServerFnError};
+// TODO: remove
+#![allow(unused)]
+
+use leptos::{server, use_context, ServerFnError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::vault::{PasswordHash, Salt};
+use crate::{vault::{PasswordHash, Salt}};
+use crate::db;
 
 #[derive(Clone, Serialize, Deserialize, Error, Debug)]
 pub enum LoginError {
@@ -14,13 +18,21 @@ pub enum LoginError {
 
 #[server]
 pub async fn get_user_salt(username: String) -> Result<Option<Salt>, ServerFnError> {
-	Ok(Some(Salt::mock_salt()))
+	let db = db::use_db();
+	
+	Ok(db.get_salt(&username)?)
 }
 
 #[server]
 pub async fn login(username: String, hash: PasswordHash) -> Result<Result<(), LoginError>, ServerFnError> {
-	if username != "Test" {
+	let db = db::use_db();
+	
+	let Some(correct_hash) = db.get_password_hash(&username)? else {
 		return Ok(Err(LoginError::UnknownUser));
+	};
+	
+	if hash != correct_hash {
+		return Ok(Err(LoginError::IncorrectPassword));
 	}
 	
 	Ok(Ok(()))
@@ -34,9 +46,13 @@ pub enum CreateAccountError {
 
 #[server]
 pub async fn create_account(username: String, salt: Salt, hash: PasswordHash) -> Result<Result<(), CreateAccountError>, ServerFnError> {
-	if username == "Test" {
+	let mut db = db::use_db();
+	
+	if db.is_user(&username)? {
 		return Ok(Err(CreateAccountError::UsernameTaken));
 	}
+	
+	db.insert_user(&username, salt, hash);
 	
 	Ok(Ok(()))
 }
