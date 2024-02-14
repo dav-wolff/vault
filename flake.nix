@@ -111,10 +111,12 @@
 					nativeBuildInputs = with pkgs; [
 						makeWrapper
 						stylance
-						strace
+						lightningcss
 					];
 					
-					buildPhase = "";
+					buildPhase = ''
+						stylance . --output-file vault.css
+					'';
 					
 					installPhase = ''
 						mkdir -p $out/bin &&
@@ -122,7 +124,7 @@
 						mv assets $out/site &&
 						cp -r ${vaultWasm} $out/site/pkg &&
 						chmod +w $out/site/pkg &&
-						stylance . --output-file $out/site/pkg/vault.css
+						lightningcss --minify vault.css --output-file $out/site/pkg/vault.css
 					'';
 					
 					fixupPhase = ''
