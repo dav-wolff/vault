@@ -24,6 +24,9 @@ tower-http = { version = "0.5", features = ["fs"], optional = true }
 tracing = { version = "0.1", optional = true }
 
 console_error_panic_hook = { version = "0.1", optional = true }
+getrandom = { version = "0.2", features = ["js"], optional = true }
+sha2 = { version = "0.10", optional = true }
+serde-big-array = "0.5.1"
 
 [features]
 ssr = [
@@ -39,6 +42,8 @@ ssr = [
 ]
 hydrate = [
 	"dep:console_error_panic_hook",
+	"dep:getrandom",
+	"dep:sha2",
 	"leptos/hydrate",
 	"leptos_meta/hydrate",
 	"leptos_router/hydrate",

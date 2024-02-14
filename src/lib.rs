@@ -1,11 +1,11 @@
 pub mod app;
+mod utils;
 mod account;
 mod app_error_view;
-mod style_utils;
+mod vault;
 
 #[cfg(feature = "ssr")]
 pub mod serve_file;
-
 
 #[cfg(feature = "hydrate")]
 #[wasm_bindgen::prelude::wasm_bindgen]

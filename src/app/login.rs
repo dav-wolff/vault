@@ -1,7 +1,7 @@
 use leptos::{leptos_dom::logging::{console_error, console_log}, *};
 use stylance::import_style;
 
-use crate::{account::{self, CreateAccountError, LoginError}, style_utils::classes};
+use crate::{account::{self, CreateAccountError, LoginError}, utils::classes, vault::{Password, Salt}};
 
 use super::input::{TextInput, InputType};
 
@@ -54,7 +54,7 @@ fn LoginForm(
 	let login = move |()| {
 		clear_errors();
 		
-		let Some(login_future) = with!(|username, password| {
+		let Some((username, password)) = with!(|username, password| {
 			if username.is_empty() {
 				username_error.set(Some("Please enter a username"));
 			}
@@ -67,13 +67,28 @@ fn LoginForm(
 				return None;
 			}
 			
-			Some(account::login(username.clone(), password.clone()))
+			Some((username.clone(), Password::new(password.clone())))
 		}) else {
 			return;
 		};
 		
 		spawn_local(async move {
-			match login_future.await {
+			let salt = match account::get_user_salt(username.clone()).await {
+				Err(_) => {
+					// TODO: handle error
+					console_error("Error retrieving salt");
+					return;
+				},
+				Ok(None) => {
+					username_error.set(Some("Unknown user"));
+					return;
+				},
+				Ok(Some(salt)) => salt,
+			};
+			
+			let hash = password.hash(&salt);
+			
+			match account::login(username, hash).await {
 				Err(_) => {
 					// TODO: handle error
 					console_error("Error logging in");
@@ -141,7 +156,7 @@ fn CreateAccountForm(
 	let create_account = move |()| {
 		clear_errors();
 		
-		let Some(create_account_future) = with!(|username, password, password_confirm| {
+		let Some((username, password)) = with!(|username, password, password_confirm| {
 			if username.is_empty() {
 				username_error.set(Some("Please enter a username"));
 			}
@@ -160,16 +175,19 @@ fn CreateAccountForm(
 				return None;
 			}
 			
-			Some(account::create_account(username.clone()))
+			Some((username.clone(), Password::new(password.clone())))
 		}) else {
 			return;
 		};
 		
+		let salt = Salt::generate().unwrap(); // TODO: handle error
+		let hash = password.hash(&salt);
+		
 		spawn_local(async move {
-			match create_account_future.await {
+			match account::create_account(username, salt, hash).await {
 				Err(_) => {
 					//TODO: handle error
-					console_error("Error logging in");
+					console_error("Error creating account");
 				},
 				Ok(Err(CreateAccountError::UsernameTaken)) => {
 					username_error.set(Some("Username is already taken"));
