@@ -1,0 +1,89 @@
+.sidebar_container {
+	flex-grow: 0;
+	position: relative;
+}
+
+.sidebar {
+	flex-grow: 0;
+	box-sizing: border-box;
+	width: 310px;
+	height: 100%;
+	border-top: 2px solid black;
+	padding: 5px;
+	background-color: #4287f5;
+}
+
+.label {
+	margin: 10px 0 2px 0;
+	font-size: 16pt;
+}
+
+.add_folder {
+	display: flex;
+}
+
+.input {
+	flex-grow: 1;
+}
+
+.button {
+	cursor: pointer;
+	margin: 0 0 0 5px;
+	height: 37px;
+	border: 1px solid black;
+	background-color: #f4e409;
+	font-size: 16pt;
+	padding: 5px;
+	
+	&:hover {
+		filter: brightness(90%);
+	}
+}
+
+.sidebar_button {
+	position: absolute;
+	left: 0;
+	display: none;
+	cursor: pointer;
+	padding: 3px;
+	min-width: 33px;
+	height: 33px;
+	border: none;
+	border-top: 2px solid black;
+	border-bottom-right-radius: 10px;
+	background-color: #4287f5;
+	
+	&:hover {
+		filter: brightness(90%);
+	}
+}
+
+.sidebar_back_button {
+	position: initial;
+	border: 1px solid black;
+	border-radius: 0;
+	background-color: #f4e409;
+	margin-bottom: 5px;
+}
+
+.icon {
+	height: 100%;
+}
+
+@media (max-width: 840px) {
+	.sidebar {
+		position: absolute;
+		left: 0;
+		height: 100%;
+		z-index: 1;
+		visibility: hidden;
+		
+		&.sidebar_open {
+			visibility: initial;
+		}
+	}
+	
+	.sidebar_button {
+		display: block;
+	}
+}

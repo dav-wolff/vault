@@ -6,8 +6,10 @@ use stylance::import_style;
 
 mod input;
 mod login;
+mod sidebar;
 
 use login::Login;
+use sidebar::Sidebar;
 
 import_style!(style, "app.css");
 
@@ -18,8 +20,8 @@ pub fn App() -> impl IntoView {
 	let (is_logged_in, set_logged_in) = create_signal(false);
 	
 	view! {
-		<Title text="Vault"/>
-		<Stylesheet id="leptos" href="/pkg/vault.css"/>
+		<Title text="Vault" />
+		<Stylesheet id="leptos" href="/pkg/vault.css" />
 		
 		<Router fallback=|| {
 			let mut outside_errors = Errors::default();
@@ -37,7 +39,9 @@ pub fn App() -> impl IntoView {
 							when=is_logged_in
 							fallback=move || view! {<Login set_logged_in />}
 						>
-							<h1>Welcome!</h1>
+							<Sidebar />
+							<div class=style::file_area>
+							</div>
 						</Show>
 					} />
 				</Routes>

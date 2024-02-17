@@ -24,3 +24,8 @@ body {
 	display: flex;
 	justify-content: center;
 }
+
+.file_area {
+	flex-grow: 1;
+	display: flex;
+}
