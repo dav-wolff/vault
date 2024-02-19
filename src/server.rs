@@ -1,5 +1,7 @@
 mod serve_file;
 
+use std::path::PathBuf;
+
 use axum::{body::Body, extract::{FromRef, Request, State}, response::IntoResponse, routing::post, Router};
 use leptos::*;
 use leptos_axum::{generate_route_list, handle_server_fns_with_context, render_app_to_stream_with_context, LeptosRoutes};
@@ -27,7 +29,9 @@ pub async fn serve() {
 	let addr = leptos_options.site_addr;
 	let routes = generate_route_list(App);
 	
-	let db_file = std::env::var("VAULT_DB_FILE")
+	let db_file: PathBuf = std::env::var_os("VAULT_DB_FILE")
+		.map(Into::into)
+		.or(option_env!("VAULT_DB_FILE").map(Into::into))
 		.expect("VAULT_DB_FILE variable must be provided");
 	
 	let context = AppState {

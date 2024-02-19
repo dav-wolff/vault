@@ -58,91 +58,114 @@
 					;
 				};
 				
-				commonArgs = {
-					inherit src;
+				makeVault = {dbFile ? null}:
+					let
+						commonArgs = {
+							inherit src;
+						};
+						
+						cargoBinArtifacts = craneLib.buildDepsOnly (commonArgs // {
+							pname = "${pname}-bin";
+							cargoExtraArgs = "--locked --features=ssr";
+						});
+						
+						cargoWasmArtifacts = craneLib.buildDepsOnly (commonArgs // {
+							pname = "${pname}-wasm";
+							cargoBuildCommand = "cargo build --profile wasm-release";
+							cargoExtraArgs = "--locked --target=wasm32-unknown-unknown --features=hydrate";
+						});
+						
+						buildArgs = commonArgs // {
+							VAULT_DB_FILE = dbFile;
+						};
+						
+						bin = craneLib.buildPackage (buildArgs // {
+							cargoArtifacts = cargoBinArtifacts;
+							pname = "${pname}-bin";
+							cargoExtraArgs = "--locked --bins --features=ssr";
+						});
+						
+						wasm = craneLib.buildPackage (buildArgs // {
+							cargoArtifacts = cargoWasmArtifacts;
+							pname = "${pname}-wasm";
+							nativeBuildInputs = with pkgs; [
+								wasm-pack
+								wasm-bindgen-cli
+								binaryen
+								nodePackages.uglify-js
+							];
+							
+							buildPhaseCargoCommand = ''
+								mkdir temp-home &&
+								HOME=$(pwd)/temp-home
+								CARGO_LOG=TRACE
+								wasm-pack build --target web --release --no-typescript --no-pack -- --locked --features=hydrate
+							'';
+							
+							installPhaseCommand = ''
+								mkdir -p $out &&
+								mv pkg/${pname}_bg.wasm $out/${pname}_bg.wasm &&
+								uglifyjs pkg/${pname}.js -o $out/${pname}.js --verbose
+							'';
+							
+							doCheck = false; # can't run tests for wasm build
+						});
+						
+						package = pkgs.stdenv.mkDerivation {
+							inherit pname version src;
+							
+							nativeBuildInputs = with pkgs; [
+								makeWrapper
+								stylance
+								dart-sass
+								lightningcss
+							];
+							
+							buildPhase = ''
+								stylance . --output-file vault.scss &&
+								sass vault.scss vault.css
+							'';
+							
+							installPhase = ''
+								mkdir -p $out/bin &&
+								cp ${bin}/bin/${pname} $out/bin/${pname} &&
+								mv assets $out/site &&
+								cp -r ${wasm} $out/site/pkg &&
+								chmod +w $out/site/pkg &&
+								lightningcss --minify vault.css --output-file $out/site/pkg/vault.css
+							'';
+							
+							fixupPhase = ''
+								wrapProgram $out/bin/${pname} \
+									--set LEPTOS_OUTPUT_NAME ${pname} \
+									--set LEPTOS_SITE_ROOT $out/site \
+									--set LEPTOS_ENV PROD
+							'';
+						};
+					in {
+						inherit wasm bin package;
+					};
+				
+				defaultVault = makeVault {};
+				
+				wasm = defaultVault.wasm // {
+					withAttrs = attrs: (makeVault attrs).wasm;
 				};
 				
-				cargoBinArtifacts = craneLib.buildDepsOnly (commonArgs // {
-					pname = "${pname}-bin";
-					cargoExtraArgs = "--locked --features=ssr";
-				});
+				bin = defaultVault.bin // {
+					withAttrs = attrs: (makeVault attrs).bin;
+				};
 				
-				cargoWasmArtifacts = craneLib.buildDepsOnly (commonArgs // {
-					pname = "${pname}-wasm";
-					cargoBuildCommand = "cargo build --profile wasm-release";
-					cargoExtraArgs = "--locked --target=wasm32-unknown-unknown --features=hydrate";
-				});
-				
-				vaultBin = craneLib.buildPackage (commonArgs // {
-					cargoArtifacts = cargoBinArtifacts;
-					pname = "${pname}-bin";
-					cargoExtraArgs = "--locked --bins --features=ssr";
-				});
-				
-				vaultWasm = craneLib.buildPackage (commonArgs // {
-					cargoArtifacts = cargoWasmArtifacts;
-					pname = "${pname}-wasm";
-					nativeBuildInputs = with pkgs; [
-						wasm-pack
-						wasm-bindgen-cli
-						binaryen
-						nodePackages.uglify-js
-					];
-					
-					buildPhaseCargoCommand = ''
-						mkdir temp-home &&
-						HOME=$(pwd)/temp-home
-						CARGO_LOG=TRACE
-						wasm-pack build --target web --release --no-typescript --no-pack -- --locked --features=hydrate
-					'';
-					
-					installPhaseCommand = ''
-						mkdir -p $out &&
-						mv pkg/${pname}_bg.wasm $out/${pname}_bg.wasm &&
-						uglifyjs pkg/${pname}.js -o $out/${pname}.js --verbose
-					'';
-					
-					doCheck = false; # can't run tests for wasm build
-				});
-				
-				vault = pkgs.stdenv.mkDerivation {
-					inherit pname version src;
-					
-					nativeBuildInputs = with pkgs; [
-						makeWrapper
-						stylance
-						dart-sass
-						lightningcss
-					];
-					
-					buildPhase = ''
-						stylance . --output-file vault.scss &&
-						sass vault.scss vault.css
-					'';
-					
-					installPhase = ''
-						mkdir -p $out/bin &&
-						cp ${vaultBin}/bin/${pname} $out/bin/${pname} &&
-						mv assets $out/site &&
-						cp -r ${vaultWasm} $out/site/pkg &&
-						chmod +w $out/site/pkg &&
-						lightningcss --minify vault.css --output-file $out/site/pkg/vault.css
-					'';
-					
-					fixupPhase = ''
-						wrapProgram $out/bin/${pname} \
-							--set LEPTOS_OUTPUT_NAME ${pname} \
-							--set LEPTOS_SITE_ROOT $out/site \
-							--set LEPTOS_ENV PROD
-					'';
+				package = defaultVault.package // {
+					withAttrs = attrs: (makeVault attrs).package;
 				};
 			in {
-				packages.default = vault;
-				packages.wasm = vaultWasm;
-				packages.bin = vaultBin;
+				packages.wasm = wasm;
+				packages.bin = bin;
+				packages.default = package;
 				
 				checks = {
-					inherit vault;
+					vault = package;
 				};
 				
 				devShells.default = craneLib.devShell {
