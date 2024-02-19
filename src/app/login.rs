@@ -21,21 +21,21 @@ pub fn Login(
 	
 	view! {
 		<div class={style::login_box}>
-			<Show
-				when=move || form() == Form::CreateAccount
-				fallback=move || view! {<LoginForm set_form set_logged_in />}
-			>
-				<CreateAccountForm set_form set_logged_in />
-			</Show>
+			<LoginForm set_form set_logged_in shown=move || form() == Form::Login />
+			<CreateAccountForm set_form set_logged_in shown=move || form() == Form::CreateAccount />
 		</div>
 	}
 }
 
 #[component]
-fn LoginForm(
+fn LoginForm<F>(
 	set_form: WriteSignal<Form>,
 	set_logged_in: WriteSignal<bool>,
-) -> impl IntoView {
+	shown: F,
+) -> impl IntoView
+where
+	F: Fn() -> bool + 'static
+{
 	let username = create_rw_signal(String::new());
 	let password = create_rw_signal(String::new());
 	let username_error = create_rw_signal(None);
@@ -111,27 +111,33 @@ fn LoginForm(
 	});
 	
 	view! {
-		<p class={style::prompt}>Login</p>
-		<p class={style::label}>Username</p>
-		<TextInput value={username} error={username_error} on_submit={login} />
-		<p class={style::label}>Password</p>
-		<TextInput value={password} error={password_error} input_type={InputType::Password} on_submit={login} />
-		<button class={style::button} on:click=move |_| login(())>Login</button>
-		<hr class={style::hr} />
-		<button
-			class={classes([style::button, style::switch_button])}
-			on:click=move |_| set_form(Form::CreateAccount)
-		>
-			Create account
-		</button>
+		<div hidden=move || !shown()>
+			<p class={style::prompt}>Login</p>
+			<p class={style::label}>Username</p>
+			<TextInput value={username} error={username_error} on_submit={login} />
+			<p class={style::label}>Password</p>
+			<TextInput value={password} error={password_error} input_type={InputType::Password} on_submit={login} />
+			<button class={style::button} on:click=move |_| login(())>Login</button>
+			<hr class={style::hr} />
+			<button
+				class={classes([style::button, style::switch_button])}
+				on:click=move |_| set_form(Form::CreateAccount)
+			>
+				Create account
+			</button>
+		</div>
 	}
 }
 
 #[component]
-fn CreateAccountForm(
+fn CreateAccountForm<F>(
 	set_form: WriteSignal<Form>,
 	set_logged_in: WriteSignal<bool>,
-) -> impl IntoView {
+	shown: F,
+) -> impl IntoView
+where
+	F: Fn() -> bool + 'static
+{
 	let username = create_rw_signal(String::new());
 	let password = create_rw_signal(String::new());
 	let password_confirm = create_rw_signal(String::new());
@@ -200,19 +206,21 @@ fn CreateAccountForm(
 	};
 	
 	view! {
-		<button
-			class={classes([style::button, style::back_button])}
-			on:click=move |_| set_form(Form::Login)
-		>
-			<img src={"back_arrow.svg"} alt="Back" />
-		</button>
-		<p class={style::prompt}>Create account</p>
-		<p class={style::label}>Username</p>
-		<TextInput value={username} error={username_error} on_submit={create_account} />
-		<p class={style::label}>Password</p>
-		<TextInput value={password} error={password_error} input_type={InputType::Password} on_submit={create_account} />
-		<p class={style::label}>Confirm password</p>
-		<TextInput value={password_confirm} error={password_confirm_error} input_type={InputType::Password} on_submit={create_account} />
-		<button class={style::button} on:click=move |_| create_account(())>Create account</button>
+		<div hidden=move || !shown()>
+			<button
+				class={classes([style::button, style::back_button])}
+				on:click=move |_| set_form(Form::Login)
+			>
+				<img src={"back_arrow.svg"} alt="Back" />
+			</button>
+			<p class={style::prompt}>Create account</p>
+			<p class={style::label}>Username</p>
+			<TextInput value={username} error={username_error} on_submit={create_account} />
+			<p class={style::label}>Password</p>
+			<TextInput value={password} error={password_error} input_type={InputType::Password} on_submit={create_account} />
+			<p class={style::label}>Confirm password</p>
+			<TextInput value={password_confirm} error={password_confirm_error} input_type={InputType::Password} on_submit={create_account} />
+			<button class={style::button} on:click=move |_| create_account(())>Create account</button>
+		</div>
 	}
 }
