@@ -6,10 +6,10 @@ use stylance::import_style;
 
 mod input;
 mod login;
-mod sidebar;
+mod folders;
 
 use login::Login;
-use sidebar::Sidebar;
+use folders::Folders;
 
 import_style!(style, "app.css");
 
@@ -39,7 +39,7 @@ pub fn App() -> impl IntoView {
 							when=is_logged_in
 							fallback=move || view! {<Login set_logged_in />}
 						>
-							<Sidebar />
+							<Folders />
 							<div class=style::file_area>
 							</div>
 						</Show>

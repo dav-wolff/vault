@@ -1,0 +1,96 @@
+.folder {
+	position: relative;
+	margin-bottom: 10px;
+	display: flex;
+	border-top: 2px solid lighten(#4287f5, 20%);
+	border-left: 2px solid lighten(#4287f5, 20%);
+	border-right: 2px solid darken(#4287f5, 20%);
+	border-bottom: 2px solid darken(#4287f5, 20%);
+}
+
+.selected {
+	border-top: 2px solid darken(#4287f5, 20%);
+	border-left: 2px solid darken(#4287f5, 20%);
+	border-right: 2px solid lighten(#4287f5, 20%);
+	border-bottom: 2px solid lighten(#4287f5, 20%);
+}
+
+.background {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	background-color: #4287f5;
+}
+
+.folder_button:hover + .background,
+.folder_button:focus + .background {
+	filter: brightness(90%);
+}
+
+.folder_button {
+	position: relative;
+	z-index: 1;
+	flex-grow: 1;
+	padding: 3px;
+	min-width: 0;
+	background-color: transparent;
+	height: 37px;
+	border: none;
+	cursor: pointer;
+	text-align: left;
+	font-size: 16pt;
+	
+	&:focus {
+		outline: none;
+	}
+}
+
+.folder_name {
+	margin: 0;
+	padding: 2px;
+	white-space: pre;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.folder_input {
+	margin: 0;
+	padding: 2px;
+	box-sizing: border-box;
+	width: 100%;
+	background-color: #6ea2f7;
+	border: none;
+	text-align: left;
+	font-size: 16pt;
+	
+	&:focus {
+		outline: none;
+	}
+}
+
+.icon_button {
+	z-index: 1;
+	flex-shrink: 0;
+	margin: 2px;
+	padding: 3px;
+	min-width: 33px; /* allow buttons expanding for alt text */
+	height: 33px;
+	cursor: pointer;
+	border: 1px solid black;
+	background-color: #f4e409;
+	
+	/* alt text */
+	font-size: 12pt;
+	
+	&:hover {
+		filter: brightness(90%);
+	}
+}
+
+.delete_button {
+	background-color: #dd403a;
+}
+
+.icon {
+	height: 100%;
+}

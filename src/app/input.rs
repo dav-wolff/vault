@@ -1,4 +1,4 @@
-use leptos::{ev::KeyboardEvent, *};
+use leptos::*;
 use stylance::import_style;
 
 import_style!(style, "input.css");
@@ -45,7 +45,7 @@ pub fn TextInput(
 		}
 	};
 	
-	let on_keydown = move |event: KeyboardEvent| {
+	let on_keydown = move |event: ev::KeyboardEvent| {
 		if event.key_code() == 13 { // enter
 			on_submit(());
 		}
@@ -53,21 +53,14 @@ pub fn TextInput(
 	
 	view! {
 		<input
-			type={move || input_type.identifier()}
-			class={input_class}
-			prop:value={value}
-			// on:change=move |event| value_changed(event_target_value(&event))
-			// on:keyup=move |event| value_changed(event_target_value(&event))
+			type=move || input_type.identifier()
+			class=input_class
+			prop:value=value
 			on:input=move |event| value_changed(event_target_value(&event))
-			on:keydown={on_keydown}
+			on:keydown=on_keydown
 		/>
 		{move || error().map(|error| view! {
 			<p class={style::error_message}>{error}</p>
 		})}
-		// <Show
-		// 	when=move || error().is_some()
-		// >
-		// 	<p class={style::error_message}>{move || error().unwrap()}</p>
-		// </Show>
 	}
 }

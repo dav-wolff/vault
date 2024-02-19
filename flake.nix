@@ -53,7 +53,7 @@
 					filter = path: type:
 						(hasInfix "/assets/" path) ||
 						(hasInfix "/style/" path) ||
-						(hasInfix "/src/" path && hasSuffix ".css" path) ||
+						(hasInfix "/src/" path && (hasSuffix ".css" path || hasSuffix ".scss" path)) ||
 						(craneLib.filterCargoSources path type)
 					;
 				};
@@ -111,11 +111,13 @@
 					nativeBuildInputs = with pkgs; [
 						makeWrapper
 						stylance
+						dart-sass
 						lightningcss
 					];
 					
 					buildPhase = ''
-						stylance . --output-file vault.css
+						stylance . --output-file vault.scss &&
+						sass vault.scss vault.css
 					'';
 					
 					installPhase = ''
@@ -156,6 +158,7 @@
 						cargo-leptos
 						binaryen
 						stylance
+						dart-sass
 					];
 				};
 			}

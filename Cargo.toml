@@ -63,7 +63,7 @@ output-name = "vault"
 site-root = "target/site"
 site-pkg-dir = "pkg"
 assets-dir = "assets"
-style-file = "target/stylance.css"
+style-file = "target/stylance.scss"
 site-addr = "127.0.0.1:3000"
 reload-port = 3001
 browserquery = "defaults"
@@ -76,5 +76,5 @@ lib-default-features = true
 lib-profile-release = "wasm-release"
 
 [package.metadata.stylance]
-output_file = "target/stylance.css"
-extensions = [".css"]
+output_file = "target/stylance.scss"
+extensions = [".css", ".scss"]
