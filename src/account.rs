@@ -1,12 +1,37 @@
-// TODO: remove
-#![allow(unused)]
-
-use leptos::{server, use_context, ServerFnError};
+use leptos::{server, ServerFnError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::{vault::{PasswordHash, Salt}};
+use crate::vault::{PasswordHash, Salt};
 use crate::db;
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct Auth {
+	username: String,
+}
+
+impl Auth {
+	fn new(username: String) -> Self {
+		Self {
+			username,
+		}
+	}
+	
+	pub fn is_valid(&self) -> bool {
+		// TODO: authorization
+		true
+	}
+	
+	pub fn username(&self) -> &str {
+		&self.username
+	}
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct UserData {
+	pub auth: Auth,
+	pub folder_names: Vec<String>,
+}
 
 #[derive(Clone, Serialize, Deserialize, Error, Debug)]
 pub enum LoginError {
@@ -24,7 +49,7 @@ pub async fn get_user_salt(username: String) -> Result<Option<Salt>, ServerFnErr
 }
 
 #[server]
-pub async fn login(username: String, hash: PasswordHash) -> Result<Result<(), LoginError>, ServerFnError> {
+pub async fn login(username: String, hash: PasswordHash) -> Result<Result<UserData, LoginError>, ServerFnError> {
 	let db = db::use_db();
 	
 	let Some(correct_hash) = db.get_password_hash(&username)? else {
@@ -35,7 +60,12 @@ pub async fn login(username: String, hash: PasswordHash) -> Result<Result<(), Lo
 		return Ok(Err(LoginError::IncorrectPassword));
 	}
 	
-	Ok(Ok(()))
+	let folder_names = db.get_folders(&username)?;
+	
+	Ok(Ok(UserData {
+		auth: Auth::new(username),
+		folder_names,
+	}))
 }
 
 #[derive(Clone, Serialize, Deserialize, Error, Debug)]
@@ -45,14 +75,17 @@ pub enum CreateAccountError {
 }
 
 #[server]
-pub async fn create_account(username: String, salt: Salt, hash: PasswordHash) -> Result<Result<(), CreateAccountError>, ServerFnError> {
+pub async fn create_account(username: String, salt: Salt, hash: PasswordHash) -> Result<Result<UserData, CreateAccountError>, ServerFnError> {
 	let mut db = db::use_db();
 	
 	if db.is_user(&username)? {
 		return Ok(Err(CreateAccountError::UsernameTaken));
 	}
 	
-	db.insert_user(&username, salt, hash);
+	db.insert_user(&username, salt, hash)?;
 	
-	Ok(Ok(()))
+	Ok(Ok(UserData {
+		auth: Auth::new(username),
+		folder_names: Vec::new(),
+	}))
 }

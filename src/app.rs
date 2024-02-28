@@ -17,7 +17,7 @@ import_style!(style, "app.css");
 pub fn App() -> impl IntoView {
 	provide_meta_context();
 	
-	let (is_logged_in, set_logged_in) = create_signal(false);
+	let (user_data, set_user_data) = create_signal(None);
 	
 	view! {
 		<Title text="Vault" />
@@ -36,13 +36,15 @@ pub fn App() -> impl IntoView {
 				<Routes>
 					<Route path="" view=move || view! {
 						<Show
-							when=is_logged_in
-							fallback=move || view! {<Login set_logged_in />}
+							when=move || user_data().is_none()
 						>
-							<Folders />
+							<Login set_user_data />
+						</Show>
+						{move || user_data().map(|user_data| view! {
+							<Folders user_data />
 							<div class=style::file_area>
 							</div>
-						</Show>
+						})}
 					} />
 				</Routes>
 			</main>

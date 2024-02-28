@@ -1,7 +1,7 @@
 use leptos::{leptos_dom::logging::{console_error, console_log}, *};
 use stylance::import_style;
 
-use crate::{account::{self, CreateAccountError, LoginError}, utils::classes, vault::{Password, Salt}};
+use crate::{account::{self, CreateAccountError, LoginError, UserData}, utils::classes, vault::{Password, Salt}};
 
 use super::input::{TextInput, InputType};
 
@@ -15,14 +15,14 @@ enum Form {
 
 #[component]
 pub fn Login(
-	set_logged_in: WriteSignal<bool>,
+	set_user_data: WriteSignal<Option<UserData>>,
 ) -> impl IntoView {
 	let (form, set_form) = create_signal(Form::Login);
 	
 	view! {
 		<div class={style::login_box}>
-			<LoginForm set_form set_logged_in shown=move || form() == Form::Login />
-			<CreateAccountForm set_form set_logged_in shown=move || form() == Form::CreateAccount />
+			<LoginForm set_form set_user_data shown=move || form() == Form::Login />
+			<CreateAccountForm set_form set_user_data shown=move || form() == Form::CreateAccount />
 		</div>
 	}
 }
@@ -30,7 +30,7 @@ pub fn Login(
 #[component]
 fn LoginForm<F>(
 	set_form: WriteSignal<Form>,
-	set_logged_in: WriteSignal<bool>,
+	set_user_data: WriteSignal<Option<UserData>>,
 	shown: F,
 ) -> impl IntoView
 where
@@ -99,8 +99,8 @@ where
 				Ok(Err(LoginError::IncorrectPassword)) => {
 					password_error.set(Some("Incorrect password"));
 				},
-				Ok(Ok(())) => {
-					set_logged_in(true);
+				Ok(Ok(user_data)) => {
+					set_user_data(Some(user_data));
 				},
 			}
 		});
@@ -132,7 +132,7 @@ where
 #[component]
 fn CreateAccountForm<F>(
 	set_form: WriteSignal<Form>,
-	set_logged_in: WriteSignal<bool>,
+	set_user_data: WriteSignal<Option<UserData>>,
 	shown: F,
 ) -> impl IntoView
 where
@@ -198,8 +198,8 @@ where
 				Ok(Err(CreateAccountError::UsernameTaken)) => {
 					username_error.set(Some("Username is already taken"));
 				},
-				Ok(Ok(())) => {
-					set_logged_in(true);
+				Ok(Ok(user_data)) => {
+					set_user_data(Some(user_data));
 				},
 			}
 		});

@@ -42,7 +42,16 @@ impl Database {
 		
 		connection.execute_batch("
 			BEGIN;
-			CREATE TABLE IF NOT EXISTS users (name TEXT, salt BLOB, password_hash BLOB);
+			CREATE TABLE IF NOT EXISTS users (
+				name TEXT NOT NULL PRIMARY KEY,
+				salt BLOB NOT NULL,
+				password_hash BLOB NOT NULL
+			);
+			CREATE TABLE IF NOT EXISTS folders (
+				name TEXT NOT NULL PRIMARY KEY,
+				user TEXT NOT NULL,
+				FOREIGN KEY(user) REFERENCES users(name) ON UPDATE CASCADE ON DELETE CASCADE
+			);
 			COMMIT;
 		")?;
 		
@@ -91,5 +100,25 @@ impl Database {
 		)?;
 		
 		Ok(results.next().transpose()?)
+	}
+	
+	pub fn get_folders(&self, username: &str) -> Result<Vec<String>, Error> {
+		let connection = self.connection.lock().unwrap();
+		let mut statement = connection.prepare_cached("SELECT name FROM folders WHERE user=?1")?;
+		
+		let results = statement.query_map([username], |row| -> Result<String, _> {
+			row.get(0)
+		})?;
+		
+		Ok(results.collect::<Result<_, _>>()?)
+	}
+	
+	pub fn add_folder(&self, username: &str, folder_name: &str) -> Result<(), Error> {
+		let connection = self.connection.lock().unwrap();
+		let mut statement = connection.prepare_cached("INSERT INTO folders (name, user) VALUES (?1, ?2)")?;
+		
+		statement.execute([folder_name, username])?;
+		
+		Ok(())
 	}
 }

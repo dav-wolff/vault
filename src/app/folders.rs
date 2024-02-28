@@ -1,5 +1,7 @@
-use leptos::{leptos_dom::logging::console_warn, *};
+use leptos::{leptos_dom::logging::{console_error, console_warn}, *};
 use stylance::{classes, import_style};
+
+use crate::{account, files};
 
 use super::input::TextInput;
 
@@ -10,21 +12,21 @@ use folder::*;
 import_style!(style, "folders.css");
 
 #[component]
-pub fn Folders() -> impl IntoView {
+pub fn Folders(
+	user_data: account::UserData,
+) -> impl IntoView {
+	let initial_folders: Vec<_> = user_data.folder_names.into_iter()
+		.enumerate()
+		.map(|(index, folder_name)| FolderData {
+			id: FolderID(index as u32),
+			name: create_rw_signal(folder_name),
+		})
+		.collect();
+	
 	let new_folder_name = create_rw_signal(String::new());
 	let folder_name_error = create_rw_signal(None);
-	let (folders, set_folders) = create_signal(vec![
-		FolderData {
-			id: FolderID(0),
-			name: create_rw_signal("Folder".to_owned()),
-		},
-		FolderData {
-			id: FolderID(1),
-			name: create_rw_signal("Another folder".to_owned()),
-		},
-	]);
+	let (folders, set_folders) = create_signal(initial_folders);
 	let (selected_folder, set_selected_folder) = create_signal(None);
-	
 	let (is_sidebar_open, set_sidebar_open) = create_signal(true);
 	
 	let sidebar_classes = move || classes!(
@@ -32,10 +34,11 @@ pub fn Folders() -> impl IntoView {
 		is_sidebar_open().then_some(style::sidebar_open)
 	);
 	
-	let current_id = store_value(std::cell::Cell::new(2));
+	let auth = store_value(user_data.auth);
+	let current_id = store_value(std::cell::Cell::new(folders.get_untracked().len() as u32));
 	
-	let add_folder = move |()| {
-		if new_folder_name().is_empty() {
+	let create_folder = move |()| {
+		if new_folder_name.get_untracked().is_empty() {
 			folder_name_error.set(Some("Please enter a folder name"));
 		}
 		
@@ -45,16 +48,24 @@ pub fn Folders() -> impl IntoView {
 			id
 		});
 		
-		set_folders.update(|folders| {
-			folders.push(
-				FolderData {
-					id: FolderID(new_id),
-					name: create_rw_signal(new_folder_name()),
-				}
-			);
+		spawn_local(async move {
+			if let Err(_) = files::create_folder(auth.get_value(), new_folder_name.get_untracked()).await {
+				// TODO: handle error
+				console_error("Error creating folder");
+				return;
+			};
+			
+			set_folders.update(|folders| {
+				folders.push(
+					FolderData {
+						id: FolderID(new_id),
+						name: create_rw_signal(new_folder_name.get_untracked()),
+					}
+				);
+			});
+			
+			new_folder_name.set(String::new());
 		});
-		
-		new_folder_name.set(String::new());
 	};
 	
 	let remove_folder = move |id| {
@@ -99,9 +110,9 @@ pub fn Folders() -> impl IntoView {
 				<p class=style::label>Add folder:</p>
 				<div class=style::add_folder>
 					<div class=style::input>
-						<TextInput value=new_folder_name error=folder_name_error on_submit=add_folder />
+						<TextInput value=new_folder_name error=folder_name_error on_submit=create_folder />
 					</div>
-					<button class=style::button on:click=move |_| add_folder(())>Add</button>
+					<button class=style::button on:click=move |_| create_folder(())>Add</button>
 				</div>
 			</div>
 		</div>

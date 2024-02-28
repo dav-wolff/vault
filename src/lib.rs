@@ -10,6 +10,7 @@ mod db {}
 mod app;
 mod utils;
 mod account;
+mod files;
 mod app_error_view;
 mod vault;
 
