@@ -24,11 +24,16 @@
 	outputs = { self, nixpkgs, flake-utils, crane, fenix }:
 		flake-utils.lib.eachDefaultSystem (system:
 			let
-				pkgs = import nixpkgs {
-					inherit system;
+				stylanceOverlay = final: prev: {
+					stylance = prev.callPackage ./stylance.nix {};
 				};
 				
-				stylance = pkgs.callPackage ./stylance.nix {};
+				pkgs = import nixpkgs {
+					inherit system;
+					overlays = [
+						stylanceOverlay
+					];
+				};
 				
 				fenixPackage = fenix.packages.${system};
 				fenixNative = fenixPackage.complete; # nightly
