@@ -43,7 +43,7 @@ where
 		}
 	});
 	
-	let cancel_name_edit = move |_| {
+	let cancel_name_edit = move || {
 		set_new_folder_name(name.get_untracked());
 		set_editing(false);
 	};
@@ -52,6 +52,8 @@ where
 		if ev.key_code() == 13 { // enter
 			name.set(new_folder_name.get_untracked());
 			set_editing(false);
+		} else if ev.key_code() == 27 { // escape
+			cancel_name_edit();
 		}
 	};
 	
@@ -71,7 +73,7 @@ where
 						node_ref=input_ref
 						class=style::folder_input
 						prop:value=new_folder_name
-						on:blur=cancel_name_edit
+						on:blur=move |_| cancel_name_edit()
 						on:input=move |ev| set_new_folder_name(event_target_value(&ev))
 						on:keydown=on_keydown
 					/>
