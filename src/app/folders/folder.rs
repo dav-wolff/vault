@@ -3,15 +3,17 @@ use std::time::Duration;
 use leptos::*;
 use stylance::{classes, import_style};
 
+use crate::vault::{CipherFolderName, SecretFolderName};
+
 import_style!(style, "folder.scss");
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct FolderID(pub u32);
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct FolderID(pub CipherFolderName);
 
 #[derive(Clone, Debug)]
 pub struct FolderData {
 	pub id: FolderID,
-	pub name: RwSignal<String>,
+	pub name: RwSignal<SecretFolderName>,
 }
 
 #[component]
@@ -27,7 +29,7 @@ where
 {
 	let FolderData {id, name} = data;
 	
-	let is_selected = move || selected_folder() == Some(id);
+	let is_selected = move || selected_folder().is_some_and(|selected| selected == id);
 	
 	let (is_editing, set_editing) = create_signal(false);
 	let (new_folder_name, set_new_folder_name) = create_signal(name.get_untracked());
@@ -74,7 +76,7 @@ where
 						class=style::folder_input
 						prop:value=new_folder_name
 						on:blur=move |_| cancel_name_edit()
-						on:input=move |ev| set_new_folder_name(event_target_value(&ev))
+						on:input=move |ev| set_new_folder_name(SecretFolderName::new(event_target_value(&ev)))
 						on:keydown=on_keydown
 					/>
 				</Show>

@@ -1,9 +1,9 @@
 use leptos::{leptos_dom::logging::{console_error, console_log}, *};
 use stylance::import_style;
 
-use crate::{account::{self, CreateAccountError, LoginError, UserData}, utils::classes, vault::{Password, Salt}};
+use crate::{account::{self, CreateAccountError, LoginError}, utils::classes, vault::{Password, Salt, Vault}};
 
-use super::input::{TextInput, InputType};
+use super::{input::{TextInput, InputType}, UserData};
 
 import_style!(style, "login.css");
 
@@ -99,8 +99,14 @@ where
 				Ok(Err(LoginError::IncorrectPassword)) => {
 					password_error.set(Some("Incorrect password"));
 				},
-				Ok(Ok(user_data)) => {
-					set_user_data(Some(user_data));
+				Ok(Ok(login_data)) => {
+					let vault = Vault::new(password, salt);
+					
+					set_user_data(Some(UserData {
+						vault: store_value(vault),
+						auth: store_value(login_data.auth),
+						initial_folder_names: login_data.folder_names,
+					}));
 				},
 			}
 		});
@@ -190,7 +196,7 @@ where
 		let hash = password.hash(&salt);
 		
 		spawn_local(async move {
-			match account::create_account(username, salt, hash).await {
+			match account::create_account(username, salt.clone(), hash).await {
 				Err(_) => {
 					//TODO: handle error
 					console_error("Error creating account");
@@ -198,8 +204,14 @@ where
 				Ok(Err(CreateAccountError::UsernameTaken)) => {
 					username_error.set(Some("Username is already taken"));
 				},
-				Ok(Ok(user_data)) => {
-					set_user_data(Some(user_data));
+				Ok(Ok(login_data)) => {
+					let vault = Vault::new(password, salt);
+					
+					set_user_data(Some(UserData {
+						vault: store_value(vault),
+						auth: store_value(login_data.auth),
+						initial_folder_names: login_data.folder_names,
+					}));
 				},
 			}
 		});

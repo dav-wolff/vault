@@ -2,7 +2,9 @@ use leptos::{server, ServerFnError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::vault::{PasswordHash, Salt};
+use crate::vault::{CipherFolderName, PasswordHash, Salt};
+
+#[allow(unused)]
 use crate::db;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -10,6 +12,7 @@ pub struct Auth {
 	username: String,
 }
 
+#[cfg(feature = "ssr")]
 impl Auth {
 	fn new(username: String) -> Self {
 		Self {
@@ -28,9 +31,9 @@ impl Auth {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct UserData {
+pub struct LoginData {
 	pub auth: Auth,
-	pub folder_names: Vec<String>,
+	pub folder_names: Vec<CipherFolderName>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Error, Debug)]
@@ -49,7 +52,7 @@ pub async fn get_user_salt(username: String) -> Result<Option<Salt>, ServerFnErr
 }
 
 #[server]
-pub async fn login(username: String, hash: PasswordHash) -> Result<Result<UserData, LoginError>, ServerFnError> {
+pub async fn login(username: String, hash: PasswordHash) -> Result<Result<LoginData, LoginError>, ServerFnError> {
 	let db = db::use_db();
 	
 	let Some(correct_hash) = db.get_password_hash(&username)? else {
@@ -62,7 +65,7 @@ pub async fn login(username: String, hash: PasswordHash) -> Result<Result<UserDa
 	
 	let folder_names = db.get_folders(&username)?;
 	
-	Ok(Ok(UserData {
+	Ok(Ok(LoginData {
 		auth: Auth::new(username),
 		folder_names,
 	}))
@@ -75,7 +78,7 @@ pub enum CreateAccountError {
 }
 
 #[server]
-pub async fn create_account(username: String, salt: Salt, hash: PasswordHash) -> Result<Result<UserData, CreateAccountError>, ServerFnError> {
+pub async fn create_account(username: String, salt: Salt, hash: PasswordHash) -> Result<Result<LoginData, CreateAccountError>, ServerFnError> {
 	let mut db = db::use_db();
 	
 	if db.is_user(&username)? {
@@ -84,7 +87,7 @@ pub async fn create_account(username: String, salt: Salt, hash: PasswordHash) ->
 	
 	db.insert_user(&username, salt, hash)?;
 	
-	Ok(Ok(UserData {
+	Ok(Ok(LoginData {
 		auth: Auth::new(username),
 		folder_names: Vec::new(),
 	}))

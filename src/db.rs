@@ -3,7 +3,7 @@ use leptos::use_context;
 use rusqlite::Connection;
 use thiserror::Error;
 
-use crate::vault::{PasswordHash, Salt};
+use crate::vault::{CipherFolderName, PasswordHash, Salt};
 
 pub struct Token(());
 
@@ -48,8 +48,10 @@ impl Database {
 				password_hash BLOB NOT NULL
 			);
 			CREATE TABLE IF NOT EXISTS folders (
-				name TEXT NOT NULL PRIMARY KEY,
+				nonce BLOB NOT NULL,
+				cipher_name BLOB NOT NULL,
 				user TEXT NOT NULL,
+				PRIMARY KEY(nonce, cipher_name),
 				FOREIGN KEY(user) REFERENCES users(name) ON UPDATE CASCADE ON DELETE CASCADE
 			);
 			COMMIT;
@@ -102,22 +104,26 @@ impl Database {
 		Ok(results.next().transpose()?)
 	}
 	
-	pub fn get_folders(&self, username: &str) -> Result<Vec<String>, Error> {
+	pub fn get_folders(&self, username: &str) -> Result<Vec<CipherFolderName>, Error> {
 		let connection = self.connection.lock().unwrap();
-		let mut statement = connection.prepare_cached("SELECT name FROM folders WHERE user=?1")?;
+		let mut statement = connection.prepare_cached("SELECT nonce, cipher_name FROM folders WHERE user=?1")?;
 		
-		let results = statement.query_map([username], |row| -> Result<String, _> {
-			row.get(0)
+		let results = statement.query_map([username], |row| -> Result<CipherFolderName, _> {
+			let nonce = row.get::<_, [u8; 24]>(0)?.into();
+			let ciphertext = row.get(1)?;
+			Ok(CipherFolderName::from_db(nonce, ciphertext, token()))
 		})?;
 		
 		Ok(results.collect::<Result<_, _>>()?)
 	}
 	
-	pub fn add_folder(&self, username: &str, folder_name: &str) -> Result<(), Error> {
+	pub fn add_folder(&self, username: &str, folder_name: &CipherFolderName) -> Result<(), Error> {
 		let connection = self.connection.lock().unwrap();
-		let mut statement = connection.prepare_cached("INSERT INTO folders (name, user) VALUES (?1, ?2)")?;
+		let mut statement = connection.prepare_cached("INSERT INTO folders (nonce, cipher_name, user) VALUES (?1, ?2, ?3)")?;
 		
-		statement.execute([folder_name, username])?;
+		let (nonce, ciphertext) = folder_name.to_db(token());
+		
+		statement.execute((nonce.as_slice(), ciphertext, username))?;
 		
 		Ok(())
 	}

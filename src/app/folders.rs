@@ -1,9 +1,9 @@
 use leptos::{leptos_dom::logging::{console_error, console_warn}, *};
 use stylance::{classes, import_style};
 
-use crate::{account, files};
+use crate::{files, vault::SecretFolderName};
 
-use super::input::TextInput;
+use super::{input::TextInput, UserData};
 
 mod folder;
 
@@ -13,13 +13,19 @@ import_style!(style, "folders.css");
 
 #[component]
 pub fn Folders(
-	user_data: account::UserData,
+	user_data: UserData,
 ) -> impl IntoView {
-	let initial_folders: Vec<_> = user_data.folder_names.into_iter()
-		.enumerate()
-		.map(|(index, folder_name)| FolderData {
-			id: FolderID(index as u32),
-			name: create_rw_signal(folder_name),
+	let vault = user_data.vault.get_value();
+	
+	let initial_folders: Vec<_> = user_data.initial_folder_names.iter()
+		.map(|folder_name| {
+			// TODO: handle error
+			let name = vault.decrypt_folder_name(folder_name).unwrap();
+			
+			FolderData {
+				id: FolderID(folder_name.clone()),
+				name: create_rw_signal(name),
+			}
 		})
 		.collect();
 	
@@ -34,22 +40,18 @@ pub fn Folders(
 		is_sidebar_open().then_some(style::sidebar_open)
 	);
 	
-	let auth = store_value(user_data.auth);
-	let current_id = store_value(std::cell::Cell::new(folders.get_untracked().len() as u32));
-	
 	let create_folder = move |()| {
-		if new_folder_name.get_untracked().is_empty() {
+		if new_folder_name.with(String::is_empty) {
 			folder_name_error.set(Some("Please enter a folder name"));
 		}
 		
-		let new_id = current_id.with_value(|cell| {
-			let id = cell.get();
-			cell.set(id + 1);
-			id
-		});
+		let folder_name = SecretFolderName::new(new_folder_name.get_untracked());
+		
+		// TODO: handle error
+		let cipher_folder_name = user_data.vault.get_value().encrypt_folder_name(&folder_name).unwrap();
 		
 		spawn_local(async move {
-			if let Err(_) = files::create_folder(auth.get_value(), new_folder_name.get_untracked()).await {
+			if let Err(_) = files::create_folder(user_data.auth.get_value(), cipher_folder_name.clone()).await {
 				// TODO: handle error
 				console_error("Error creating folder");
 				return;
@@ -58,8 +60,8 @@ pub fn Folders(
 			set_folders.update(|folders| {
 				folders.push(
 					FolderData {
-						id: FolderID(new_id),
-						name: create_rw_signal(new_folder_name.get_untracked()),
+						id: FolderID(cipher_folder_name),
+						name: create_rw_signal(folder_name),
 					}
 				);
 			});
@@ -94,15 +96,16 @@ pub fn Folders(
 				</button>
 				<For
 					each=move || folders()
-					key=|folder| folder.id
+					key=|folder| folder.id.clone()
 					children=move |data| {
-						let id = data.id;
+						let id_a = data.id.clone();
+						let id_b = data.id.clone();
 						view! {
 							<Folder
 								data
 								selected_folder
-								select_folder=move || set_selected_folder(Some(id))
-								delete_folder=move || remove_folder(id)
+								select_folder=move || set_selected_folder(Some(id_a.clone()))
+								delete_folder=move || remove_folder(id_b.clone())
 							/>
 						}
 					}

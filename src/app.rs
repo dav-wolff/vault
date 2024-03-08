@@ -1,4 +1,4 @@
-use crate::app_error_view::{AppError, AppErrorView};
+use crate::{account::Auth, app_error_view::{AppError, AppErrorView}, vault::{CipherFolderName, Vault}};
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
@@ -12,6 +12,13 @@ use login::Login;
 use folders::Folders;
 
 import_style!(style, "app.css");
+
+#[derive(Clone, Debug)]
+struct UserData {
+	vault: StoredValue<Vault>,
+	auth: StoredValue<Auth>,
+	initial_folder_names: Vec<CipherFolderName>,
+}
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -36,7 +43,7 @@ pub fn App() -> impl IntoView {
 				<Routes>
 					<Route path="" view=move || view! {
 						<Show
-							when=move || user_data().is_none()
+							when=move || user_data.with(Option::is_none)
 						>
 							<Login set_user_data />
 						</Show>

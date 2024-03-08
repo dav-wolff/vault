@@ -1,9 +1,12 @@
 use leptos::{server, ServerFnError};
 
-use crate::{account::Auth, db};
+use crate::{account::Auth, vault::CipherFolderName};
+
+#[allow(unused)]
+use crate::db;
 
 #[server]
-pub async fn create_folder(auth: Auth, folder_name: String) -> Result<(), ServerFnError> {
+pub async fn create_folder(auth: Auth, folder_name: CipherFolderName) -> Result<(), ServerFnError> {
 	if !auth.is_valid() {
 		todo!("Unauthorized");
 	}

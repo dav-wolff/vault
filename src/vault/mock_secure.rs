@@ -1,4 +1,4 @@
-use std::{convert::Infallible, fmt::{self, Debug}};
+use std::convert::Infallible;
 use super::*;
 
 impl Salt {
@@ -19,8 +19,44 @@ impl Password {
 	}
 }
 
-impl Debug for Password {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "Password(...)")
+#[derive(Clone)]
+pub struct SecretFolderName(());
+
+impl SecretFolderName {
+	pub fn new(_name: String) -> Self {
+		panic!("Not implemented for ssr");
+	}
+	
+	pub fn as_str(&self) -> &str {
+		panic!("Not implemented for ssr");
+	}
+}
+
+impl leptos::IntoView for SecretFolderName {
+	fn into_view(self) -> leptos::View {
+		panic!("Not implemented for ssr");
+	}
+}
+
+impl From<SecretFolderName> for wasm_bindgen::JsValue {
+	fn from(_value: SecretFolderName) -> Self {
+		panic!("Not implemented for ssr");
+	}
+}
+
+#[derive(Clone)]
+pub struct Vault(());
+
+impl Vault {
+	pub fn new(_password: Password, _salt: Salt) -> Self {
+		panic!("Not implemented for ssr");
+	}
+	
+	pub fn encrypt_folder_name(&self, _secret: &SecretFolderName) -> Result<CipherFolderName, EncryptionError> {
+		panic!("Not implemented for ssr");
+	}
+	
+	pub fn decrypt_folder_name(&self, _cipher_name: &CipherFolderName) -> Result<SecretFolderName, DecryptionError> {
+		panic!("Not implemented for ssr");
 	}
 }
