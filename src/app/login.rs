@@ -1,4 +1,4 @@
-use leptos::{leptos_dom::logging::{console_error, console_log}, *};
+use leptos::{leptos_dom::logging::console_error, *};
 use stylance::import_style;
 
 use crate::{account::{self, CreateAccountError, LoginError}, utils::classes, vault::{Password, Salt, Vault}};
@@ -111,10 +111,6 @@ where
 			}
 		});
 	};
-	
-	create_effect(move |_| {
-		console_log(&username());
-	});
 	
 	view! {
 		<div hidden=move || !shown()>
