@@ -20,6 +20,11 @@ struct UserData {
 	initial_folder_names: Vec<CipherFolderName>,
 }
 
+#[derive(Params, Clone, PartialEq, Eq, Debug)]
+struct FolderParams {
+	index: usize,
+}
+
 #[component]
 pub fn App() -> impl IntoView {
 	provide_meta_context();
@@ -41,7 +46,7 @@ pub fn App() -> impl IntoView {
 			<header class={style::title}>Vault</header>
 			<main class={style::content}>
 				<Routes>
-					<Route path="" view=move || view! {
+					<Route path="/" view=move || view! {
 						<Show
 							when=move || user_data.with(Option::is_none)
 						>
@@ -50,9 +55,19 @@ pub fn App() -> impl IntoView {
 						{move || user_data().map(|user_data| view! {
 							<Folders user_data />
 							<div class=style::file_area>
+								<Outlet />
 							</div>
 						})}
-					} />
+					}>
+						<Route path="" view=|| "" />
+						<Route path="/folder/:index" view=move || {
+							let params = use_params::<FolderParams>();
+							
+							view! {
+								<h1>{move || params.get().map(|params| params.index.to_string()).unwrap_or(String::from("Unknown folder"))}</h1>
+							}
+						} />
+					</Route>
 				</Routes>
 			</main>
 		</Router>
