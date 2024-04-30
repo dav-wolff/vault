@@ -1,12 +1,14 @@
-use crate::{account::Auth, app_error_view::{AppError, AppErrorView}, vault::{CipherFolderName, Vault}};
+use crate::{account::Auth, app::file_area::FileArea, app_error_view::{AppError, AppErrorView}, vault::{CipherFolderName, Vault}};
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
 use stylance::import_style;
 
 mod input;
+mod local_image;
 mod login;
 mod folders;
+mod file_area;
 
 use login::Login;
 use folders::Folders;
@@ -64,7 +66,7 @@ pub fn App() -> impl IntoView {
 							let params = use_params::<FolderParams>();
 							
 							view! {
-								<h1>{move || params.get().map(|params| params.index.to_string()).unwrap_or(String::from("Unknown folder"))}</h1>
+								<FileArea />
 							}
 						} />
 					</Route>
