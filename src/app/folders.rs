@@ -1,4 +1,4 @@
-use leptos::{leptos_dom::logging::console_error, *};
+use leptos::*;
 use leptos_router::use_navigate;
 use stylance::{classes, import_style};
 
@@ -53,9 +53,9 @@ pub fn Folders(
 		let cipher_folder_name = user_data.vault.get_value().encrypt_folder_name(&folder_name).unwrap();
 		
 		spawn_local(async move {
-			if let Err(_) = files::create_folder(user_data.auth.get_value(), cipher_folder_name.clone()).await {
+			if let Err(err) = files::create_folder(user_data.auth.get_value(), cipher_folder_name.clone()).await {
 				// TODO: handle error
-				console_error("Error creating folder");
+				leptos_dom::error!("Error creating folder: {err}");
 				return;
 			};
 			

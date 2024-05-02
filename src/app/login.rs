@@ -1,4 +1,4 @@
-use leptos::{leptos_dom::logging::console_error, *};
+use leptos::*;
 use stylance::import_style;
 
 use crate::{account::{self, CreateAccountError, LoginError}, utils::classes, vault::{Password, Salt, Vault}};
@@ -74,9 +74,9 @@ where
 		
 		spawn_local(async move {
 			let salt = match account::get_user_salt(username.clone()).await {
-				Err(_) => {
+				Err(err) => {
 					// TODO: handle error
-					console_error("Error retrieving salt");
+					leptos_dom::error!("Error retrieving salt: {err}");
 					return;
 				},
 				Ok(None) => {
@@ -89,9 +89,9 @@ where
 			let hash = password.hash(&salt);
 			
 			match account::login(username, hash).await {
-				Err(_) => {
+				Err(err) => {
 					// TODO: handle error
-					console_error("Error logging in");
+					leptos_dom::error!("Error logging in: {err}");
 				},
 				Ok(Err(LoginError::UnknownUser)) => {
 					username_error.set(Some("Unknown user"));
@@ -193,9 +193,9 @@ where
 		
 		spawn_local(async move {
 			match account::create_account(username, salt.clone(), hash).await {
-				Err(_) => {
+				Err(err) => {
 					//TODO: handle error
-					console_error("Error creating account");
+					leptos_dom::error!("Error creating account: {err}");
 				},
 				Ok(Err(CreateAccountError::UsernameTaken)) => {
 					username_error.set(Some("Username is already taken"));
