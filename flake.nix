@@ -24,15 +24,8 @@
 	outputs = { self, nixpkgs, flake-utils, crane, fenix }:
 		flake-utils.lib.eachDefaultSystem (system:
 			let
-				stylanceOverlay = final: prev: {
-					stylance = prev.callPackage ./stylance.nix {};
-				};
-				
 				pkgs = import nixpkgs {
 					inherit system;
-					overlays = [
-						stylanceOverlay
-					];
 				};
 				
 				fenixPackage = fenix.packages.${system};
@@ -121,7 +114,7 @@
 							
 							nativeBuildInputs = with pkgs; [
 								makeWrapper
-								stylance
+								stylance-cli
 								dart-sass
 								lightningcss
 							];
@@ -185,7 +178,7 @@
 						just
 						cargo-leptos
 						binaryen
-						stylance
+						stylance-cli
 						dart-sass
 					];
 				};

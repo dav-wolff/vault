@@ -13,7 +13,7 @@ leptos_router = { version = "0.6", features = ["nightly"] }
 web-sys = { version = "0.3", features = ["DragEvent", "DataTransfer", "FileList", "File", "Blob", "HtmlInputElement"] }
 thiserror = "1"
 http = "1"
-wasm-bindgen = "=0.2.89"
+wasm-bindgen = "=0.2.92"
 wasm-bindgen-futures = "0.4"
 futures = "0.3"
 serde = "1"
@@ -31,7 +31,7 @@ tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 tower = { version = "0.4", optional = true }
 tower-http = { version = "0.5", features = ["fs"], optional = true }
 tracing = { version = "0.1", optional = true }
-rusqlite = { version = "0.30", features = ["bundled"], optional = true }
+rusqlite = { version = "0.31", features = ["bundled"], optional = true }
 
 console_error_panic_hook = { version = "0.1", optional = true }
 sha2 = { version = "0.10", optional = true }
