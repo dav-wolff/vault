@@ -56,7 +56,7 @@
 					;
 				};
 				
-				makeVault = {dbFile ? null}:
+				makeVault = {dbFile ? null, filesLocation ? null}:
 					let
 						commonArgs = {
 							inherit src;
@@ -75,6 +75,7 @@
 						
 						buildArgs = commonArgs // {
 							VAULT_DB_FILE = dbFile;
+							VAULT_FILES_LOCATION = filesLocation;
 						};
 						
 						bin = craneLib.buildPackage (buildArgs // {
@@ -171,6 +172,7 @@
 					
 					shellHook = ''
 						export VAULT_DB_FILE="dev_data/vault.db"
+						export VAULT_FILES_LOCATION="dev_data/files"
 					'';
 					
 					packages = with pkgs; [

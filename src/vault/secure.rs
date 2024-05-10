@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use argon2::Argon2;
 use chacha20poly1305::{aead::Aead, Key, KeyInit, XChaCha20Poly1305};
 use getrandom::getrandom;
@@ -40,37 +42,29 @@ impl Password {
 }
 
 #[derive(Clone)]
-pub struct SecretFolderName {
-	name: String,
+pub struct Secret<T: CipherSecret> {
+	inner: T,
 }
 
-impl SecretFolderName {
-	pub fn new(name: String) -> Self {
+impl<T: CipherSecret> Secret<T> {
+	pub fn hide(value: T) -> Self {
 		Self {
-			name,
+			inner: value,
 		}
 	}
 	
-	pub fn as_str(&self) -> &str {
-		&self.name
+	pub fn reveal_secret(&self) -> &T {
+		&self.inner
 	}
-}
-
-impl leptos::IntoView for SecretFolderName {
-	fn into_view(self) -> leptos::View {
-		self.name.into_view()
-	}
-}
-
-impl From<SecretFolderName> for wasm_bindgen::JsValue {
-	fn from(value: SecretFolderName) -> Self {
-		value.name.into()
+	
+	pub fn into_revealed_secret(self) -> T {
+		self.inner
 	}
 }
 
 #[derive(Clone)]
 pub struct Vault {
-	cipher: XChaCha20Poly1305,
+	cipher: Rc<XChaCha20Poly1305>,
 }
 
 impl Vault {
@@ -83,40 +77,25 @@ impl Vault {
 		let cipher = XChaCha20Poly1305::new(&key);
 		
 		Self {
-			cipher,
+			cipher: Rc::new(cipher),
 		}
 	}
 	
-	fn encrypt(&self, secret: &[u8]) -> Result<(Vec<u8>, Nonce), EncryptionError> {
+	pub fn encrypt<T: CipherSecret>(&self, secret: &Secret<T>) -> Result<Cipher<T>, EncryptionError> {
+		let secret = secret.inner.as_bytes();
 		let mut nonce = Nonce::default();
 		getrandom(&mut nonce)?;
 		
-		let ciphertext = self.cipher.encrypt(&nonce, secret)?;
+		let ciphertext = self.cipher.encrypt(&nonce, secret.as_ref())?;
 		
-		Ok((ciphertext, nonce))
+		Ok(Cipher::new(&nonce, &ciphertext))
 	}
 	
-	fn decrypt(&self, nonce: &Nonce, ciphertext: &[u8]) -> Result<Vec<u8>, DecryptionError> {
-		let secret = self.cipher.decrypt(nonce, ciphertext)?;
+	pub fn decrypt<T: CipherSecret>(&self, cipher: &Cipher<T>) -> Result<Secret<T>, DecryptionError> {
+		let secret = self.cipher.decrypt(&cipher.nonce(), cipher.ciphertext())?;
 		
-		Ok(secret)
-	}
-	
-	pub fn encrypt_folder_name(&self, secret: &SecretFolderName) -> Result<CipherFolderName, EncryptionError> {
-		let (ciphertext, nonce) = self.encrypt(secret.name.as_bytes())?;
-		
-		Ok(CipherFolderName {
-			nonce,
-			ciphertext,
-		})
-	}
-	
-	pub fn decrypt_folder_name(&self, cipher_name: &CipherFolderName) -> Result<SecretFolderName, DecryptionError> {
-		let plain_text = self.decrypt(&cipher_name.nonce, &cipher_name.ciphertext)?;
-		let name = String::from_utf8(plain_text)?;
-		
-		Ok(SecretFolderName {
-			name,
+		Ok(Secret {
+			inner: T::from_bytes(secret)?,
 		})
 	}
 }

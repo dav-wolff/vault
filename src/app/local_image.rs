@@ -13,6 +13,6 @@ pub fn LocalImage(src: ObjectUrl) -> impl IntoView {
 	};
 	
 	view! {
-		<img src={url} on:load={loaded} />
+		<img src=url on:load=loaded />
 	}
 }

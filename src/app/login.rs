@@ -103,9 +103,9 @@ where
 					let vault = Vault::new(password, salt);
 					
 					set_user_data(Some(UserData {
-						vault: store_value(vault),
-						auth: store_value(login_data.auth),
-						initial_folder_names: login_data.folder_names,
+						vault,
+						auth: login_data.auth,
+						initial_folders: login_data.folder_names,
 					}));
 				},
 			}
@@ -204,9 +204,9 @@ where
 					let vault = Vault::new(password, salt);
 					
 					set_user_data(Some(UserData {
-						vault: store_value(vault),
-						auth: store_value(login_data.auth),
-						initial_folder_names: login_data.folder_names,
+						vault,
+						auth: login_data.auth,
+						initial_folders: login_data.folder_names,
 					}));
 				},
 			}

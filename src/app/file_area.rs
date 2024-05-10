@@ -6,41 +6,60 @@ mod file;
 
 use file::*;
 
+use crate::{app::folders::CurrentFolder, file_store::FileStore, vault::{FileContent, FileInfo, Secret}};
+
 import_style!(style, "file_area.scss");
 
+async fn parse_files(file_list: FileList) -> Vec<(Secret<FileInfo>, Secret<FileContent>)> {
+	let data_futures: Vec<_> = file_list.iter()
+		.map(|file| gloo_file::futures::read_as_bytes(&file))
+		.collect();
+	
+	let files_data = futures::future::join_all(data_futures).await;
+	
+	file_list.into_iter().zip(files_data.into_iter())
+		.filter_map(|(file, data_result)| match data_result {
+			Ok(data) => Some((file, data)),
+			Err(error) => {
+				let file_name = file.name();
+				leptos_dom::error!("Error trying to read ArrayBuffer of file {file_name}:\n{error}");
+				None
+			}
+		})
+		.map(|(file, data)| {
+			let info = Secret::hide(FileInfo {
+				name: file.name(),
+				mime_type: file.raw_mime_type(),
+			});
+			
+			let content = Secret::hide(FileContent {
+				data,
+			});
+			
+			(info, content)
+		})
+		.collect()
+}
+
 #[component]
-pub fn FileArea() -> impl IntoView {
+pub fn FileArea(file_store: FileStore) -> impl IntoView {
 	let (is_drag_target, set_is_drag_target) = create_signal(false);
-	let (files, set_files) = create_signal(Vec::new());
 	let input_ref: NodeRef<html::Input> = create_node_ref();
 	
+	let CurrentFolder(current_folder) = use_context().unwrap();
+	
+	let file_store = store_value(file_store);
+	
+	let files = move || with!(|file_store| file_store.files_in_folder_tracked(current_folder().expect("FileArea should not be shown with no folder selected")));
+	
+	// TODO temporary workaround for weird behavior with the effect not updating properly
+	create_effect(move |_| with!(|file_store| file_store.files_in_folder_tracked(current_folder().unwrap())));
+	
 	let add_files = move |file_list: FileList| async move {
-		let data_futures: Vec<_> = file_list.iter()
-			.map(|file| gloo_file::futures::read_as_bytes(&file))
-			.collect();
-		
-		let files_data = futures::future::join_all(data_futures).await;
-		
-		let new_files: Vec<_> = file_list.into_iter().zip(files_data.into_iter())
-			.filter_map(|(file, data_result)| match data_result {
-				Ok(data) => Some((file, data)),
-				Err(error) => {
-					let file_name = file.name();
-					leptos_dom::error!("Error trying to read ArrayBuffer of file {file_name}:\n{error}");
-					None
-				}
-			})
-			.map(|(file, data)| {
-				FileData {
-					id: FileID(file.name()),
-					name: file.name(),
-					mime_type: file.raw_mime_type(),
-					data: data.into(),
-				}
-			})
-			.collect();
-		
-		set_files.update(|files| files.extend_from_slice(&new_files));
+		let folder = current_folder.get_untracked().expect("FileArea should not be shown with no folder selected");
+		let files = parse_files(file_list).await;
+		let file_store = file_store.get_value();
+		file_store.add_files(folder, files).await;
 	};
 	
 	let handle_drag = move |event: ev::DragEvent| {
@@ -94,13 +113,22 @@ pub fn FileArea() -> impl IntoView {
 	
 	view! {
 		<div class=style::main on:dragenter=handle_drag on:dragover=handle_drag>
-			<For
-				each=move || files()
-				key=|file| file.id.clone()
-				children=|file| view! {
-					<File file />
-				}
-			/>
+			{move || match files() {
+				Some(files) => view! {
+					// TODO Does this rerender everytime a file is added?
+					<For
+						// TODO why does this need to be cloned?
+						each=move || files.clone()
+						key=|file| file.id.clone()
+						children=move |file| view! {
+							<File file_store file />
+						}
+					/>
+				}.into_view(),
+				None => view! {
+					<p>Loading...</p>
+				}.into_view(),
+			}}
 			<label class=style::upload_button>
 				<input type="file" multiple on:change=handle_file_input node_ref=input_ref />
 				<img src="" alt="Upload" />

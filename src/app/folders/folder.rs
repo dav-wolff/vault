@@ -1,21 +1,18 @@
 use std::time::Duration;
 
 use leptos::*;
-use leptos_router::{use_location, A};
+use leptos_router::A;
 use stylance::{classes, import_style};
 
-use crate::vault::{CipherFolderName, SecretFolderName};
+use crate::{app::folders::CurrentFolder, vault::{Cipher, FolderName, Secret}};
 
 import_style!(style, "folder.scss");
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct FolderID(pub CipherFolderName);
-
 #[derive(Clone, Debug)]
 pub struct FolderData {
-	pub id: FolderID,
+	pub id: Cipher<FolderName>,
 	pub index: RwSignal<usize>,
-	pub name: RwSignal<SecretFolderName>,
+	pub name: RwSignal<Secret<FolderName>>,
 }
 
 impl FolderData {
@@ -33,20 +30,13 @@ pub fn Folder<D>(
 where
 	D: Fn(bool) + 'static,
 {
-	let FolderData {index, name, ..} = data;
+	let FolderData {id, index, name} = data;
 	
 	let (is_editing, set_editing) = create_signal(false);
 	let (new_folder_name, set_new_folder_name) = create_signal(name.get_untracked());
 	
-	let folder_href = move || format!("/folder/{}", index());
-	
-	let location = use_location();
-	
-	let is_selected = create_memo(move |_| {
-		location.pathname.with(|pathname| {
-			pathname.to_ascii_lowercase().starts_with(&folder_href())
-		})
-	});
+	let CurrentFolder(selected_folder) = use_context().unwrap();
+	let is_selected = Signal::derive(move || selected_folder().is_some_and(|selected_id| selected_id == id));
 	
 	let input_ref: NodeRef<html::Input> = create_node_ref();
 	
@@ -64,6 +54,14 @@ where
 		set_editing(false);
 	};
 	
+	let on_input = move |ev: ev::Event| {
+		let folder_name = Secret::hide(FolderName {
+			name: event_target_value(&ev),
+		});
+		
+		set_new_folder_name(folder_name);
+	};
+	
 	let on_keydown = move |ev: ev::KeyboardEvent| {
 		if ev.key_code() == 13 { // enter
 			name.set(new_folder_name.get_untracked());
@@ -75,7 +73,7 @@ where
 	
 	let href = move || {
 		if !is_selected() {
-			folder_href()
+			format!("/folder/{}", index())
 		} else {
 			"/".to_owned()
 		}
@@ -86,14 +84,14 @@ where
 			<A class=style::folder_button href>
 				<Show
 					when=move || is_editing()
-					fallback=move || view! {<p class=style::folder_name>{name}</p>}
+					fallback=move || view! {<p class=style::folder_name>{name().into_revealed_secret().name}</p>}
 				>
 					<input
 						node_ref=input_ref
 						class=style::folder_input
-						prop:value=new_folder_name
+						prop:value=move || new_folder_name().into_revealed_secret().name
 						on:blur=move |_| cancel_name_edit()
-						on:input=move |ev| set_new_folder_name(SecretFolderName::new(event_target_value(&ev)))
+						on:input=on_input
 						on:keydown=on_keydown
 					/>
 				</Show>

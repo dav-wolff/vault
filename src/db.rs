@@ -3,7 +3,7 @@ use leptos::use_context;
 use rusqlite::Connection;
 use thiserror::Error;
 
-use crate::vault::{CipherFolderName, PasswordHash, Salt};
+use crate::vault::{Cipher, FileInfo, FolderName, PasswordHash, Salt};
 
 pub struct Token(());
 
@@ -21,6 +21,8 @@ pub enum Error {
 	FileError(#[from] io::Error),
 	#[error("SQLite error")]
 	SQLiteError(#[from] rusqlite::Error),
+	#[error("Not found")]
+	NotFound,
 }
 
 #[derive(Clone, Debug)]
@@ -48,11 +50,17 @@ impl Database {
 				password_hash BLOB NOT NULL
 			);
 			CREATE TABLE IF NOT EXISTS folders (
-				nonce BLOB NOT NULL,
-				cipher_name BLOB NOT NULL,
+				name BLOB NOT NULL,
 				user TEXT NOT NULL,
-				PRIMARY KEY(nonce, cipher_name),
+				PRIMARY KEY(name),
 				FOREIGN KEY(user) REFERENCES users(name) ON UPDATE CASCADE ON DELETE CASCADE
+			);
+			CREATE TABLE IF NOT EXISTS files (
+				folder BLOB NOT NULL,
+				info BLOB NOT NULL,
+				file_id TEXT NOT NULL,
+				PRIMARY KEY(info),
+				FOREIGN KEY(folder) REFERENCES folders(name) ON UPDATE CASCADE ON DELETE CASCADE
 			);
 			COMMIT;
 		")?;
@@ -104,27 +112,67 @@ impl Database {
 		Ok(results.next().transpose()?)
 	}
 	
-	pub fn get_folders(&self, username: &str) -> Result<Vec<CipherFolderName>, Error> {
+	pub fn get_folders(&self, username: &str) -> Result<Vec<Cipher<FolderName>>, Error> {
 		let connection = self.connection.lock().unwrap();
-		let mut statement = connection.prepare_cached("SELECT nonce, cipher_name FROM folders WHERE user=?1")?;
+		let mut statement = connection.prepare_cached("SELECT name FROM folders WHERE user=?1")?;
 		
-		let results = statement.query_map([username], |row| -> Result<CipherFolderName, _> {
-			let nonce = row.get::<_, [u8; 24]>(0)?.into();
-			let ciphertext = row.get(1)?;
-			Ok(CipherFolderName::from_db(nonce, ciphertext, token()))
+		let results = statement.query_map([username], |row| -> Result<Cipher<FolderName>, _> {
+			Ok(Cipher::<FolderName>::from_bytes(row.get(0)?))
 		})?;
 		
 		Ok(results.collect::<Result<_, _>>()?)
 	}
 	
-	pub fn add_folder(&self, username: &str, folder_name: &CipherFolderName) -> Result<(), Error> {
+	pub fn add_folder(&self, username: &str, folder_name: &Cipher<FolderName>) -> Result<(), Error> {
 		let connection = self.connection.lock().unwrap();
-		let mut statement = connection.prepare_cached("INSERT INTO folders (nonce, cipher_name, user) VALUES (?1, ?2, ?3)")?;
+		let mut statement = connection.prepare_cached("INSERT INTO folders (name, user) VALUES (?1, ?2)")?;
 		
-		let (nonce, ciphertext) = folder_name.to_db(token());
+		let name = folder_name.as_bytes();
 		
-		statement.execute((nonce.as_slice(), ciphertext, username))?;
+		statement.execute((name, username))?;
 		
 		Ok(())
+	}
+	
+	pub fn get_files(&self, folder: &Cipher<FolderName>) -> Result<Vec<Cipher<FileInfo>>, Error> {
+		let connection = self.connection.lock().unwrap();
+		let mut statement = connection.prepare_cached("SELECT info FROM files WHERE folder=?1")?;
+		
+		let folder = folder.as_bytes();
+		
+		let results = statement.query_map([folder], |row| {
+			Ok(Cipher::<FileInfo>::from_bytes(row.get(0)?))
+		})?;
+		
+		Ok(results.collect::<Result<_, _>>()?)
+	}
+	
+	pub fn add_file(&self, folder: &Cipher<FolderName>, file_info: &Cipher<FileInfo>, file_id: &str) -> Result<(), Error> {
+		let connection = self.connection.lock().unwrap();
+		let mut statement = connection.prepare_cached("INSERT INTO files (folder, info, file_id) VALUES (?1, ?2, ?3)")?;
+		
+		let folder = folder.as_bytes();
+		let file_info = file_info.as_bytes();
+		
+		statement.execute((
+			folder,
+			file_info,
+			file_id
+		))?;
+		
+		Ok(())
+	}
+	
+	pub fn get_file_id(&self, file: &Cipher<FileInfo>) -> Result<String, Error> {
+		let connection = self.connection.lock().unwrap();
+		let mut statement = connection.prepare_cached("SELECT file_id FROM files WHERE info=?1")?;
+		
+		let file_info = file.as_bytes();
+		
+		let mut results = statement.query_map([file_info], |row| {
+			row.get(0)
+		})?;
+		
+		results.next().transpose()?.ok_or(Error::NotFound)
 	}
 }

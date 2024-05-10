@@ -1,8 +1,26 @@
 #[cfg(feature = "hydrate")]
 mod secure;
-
 #[cfg(feature = "hydrate")]
 pub use secure::*;
+
+#[cfg(not(feature = "hydrate"))]
+mod mock_secure;
+#[cfg(not(feature = "hydrate"))]
+pub use mock_secure::*;
+
+#[cfg(feature = "ssr")]
+mod db_access;
+
+mod cipher_secret;
+pub use cipher_secret::*;
+
+mod types;
+pub use types::*;
+
+use std::{fmt::{self, Debug}, str::Utf8Error};
+use thiserror::Error;
+use serde::{Deserialize, Serialize};
+use serde_big_array::BigArray;
 
 #[derive(Clone, Error, Debug)]
 pub enum EncryptionError {
@@ -17,20 +35,10 @@ pub enum DecryptionError {
 	#[error("Error decrypting ciphertext")]
 	ChaChaError(#[from] chacha20poly1305::Error),
 	#[error("Failed to parse plain text as UTF-8")]
-	ParseUtf8Error(#[from] FromUtf8Error),
+	ParseUtf8Error(#[from] Utf8Error),
+	#[error("Plain text ended unexpectedly")]
+	UnexpectedEndOfBytes,
 }
-
-
-#[cfg(not(feature = "hydrate"))]
-mod mock_secure;
-
-#[cfg(not(feature = "hydrate"))]
-pub use mock_secure::*;
-use thiserror::Error;
-
-use std::{fmt::{self, Debug}, string::FromUtf8Error};
-use serde::{Deserialize, Serialize};
-use serde_big_array::BigArray;
 
 type Nonce = chacha20poly1305::aead::Nonce<chacha20poly1305::XChaCha20Poly1305>;
 
@@ -43,55 +51,6 @@ pub struct Salt {
 pub struct PasswordHash {
 	#[serde(with = "BigArray")]
 	data: [u8; 64],
-}
-
-#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
-pub struct CipherFolderName {
-	nonce: Nonce,
-	ciphertext: Vec<u8>,
-}
-
-#[cfg(feature = "ssr")]
-mod db_acces {
-	use super::*;
-	use crate::db;
-	
-	impl Salt {
-		pub fn from_db(data: [u8; 32], _: db::Token) -> Self {
-			Self {
-				data,
-			}
-		}
-		
-		pub fn to_db(&self, _: db::Token) -> [u8; 32] {
-			self.data
-		}
-	}
-	
-	impl PasswordHash {
-		pub fn from_db(data: [u8; 64], _: db::Token) -> Self {
-			Self {
-				data,
-			}
-		}
-		
-		pub fn to_db(&self, _: db::Token) -> [u8; 64] {
-			self.data
-		}
-	}
-	
-	impl CipherFolderName {
-		pub fn from_db(nonce: Nonce, ciphertext: Vec<u8>, _: db::Token) -> Self {
-			Self {
-				nonce,
-				ciphertext,
-			}
-		}
-		
-		pub fn to_db(&self, _: db::Token) -> (Nonce, &[u8]) {
-			(self.nonce, &self.ciphertext)
-		}
-	}
 }
 
 macro_rules! hidden_debug {
@@ -108,4 +67,9 @@ hidden_debug!(Password);
 hidden_debug!(Salt);
 hidden_debug!(PasswordHash);
 hidden_debug!(Vault);
-hidden_debug!(SecretFolderName);
+
+impl<T: CipherSecret> Debug for Secret<T> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "Secret<{}>(...)", std::any::type_name::<T>())
+	}
+}

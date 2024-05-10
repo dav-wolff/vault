@@ -13,6 +13,7 @@ mod account;
 mod files;
 mod app_error_view;
 mod vault;
+mod file_store;
 
 #[cfg(feature = "hydrate")]
 #[wasm_bindgen::prelude::wasm_bindgen]

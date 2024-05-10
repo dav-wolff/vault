@@ -1,6 +1,6 @@
 mod serve_file;
 
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 use axum::{body::Body, extract::{FromRef, Request, State}, response::IntoResponse, routing::post, Router};
 use leptos::*;
@@ -14,6 +14,7 @@ use serve_file::serve_file;
 pub struct AppState {
 	leptos_options: LeptosOptions,
 	database: Database,
+	files_location: PathBuf,
 }
 
 impl FromRef<AppState> for LeptosOptions {
@@ -34,9 +35,19 @@ pub async fn serve() {
 		.or(option_env!("VAULT_DB_FILE").map(Into::into))
 		.expect("VAULT_DB_FILE variable must be provided");
 	
+	let files_location: PathBuf = std::env::var_os("VAULT_FILES_LOCATION")
+		.map(Into::into)
+		.or(option_env!("VAULT_FILES_LOCATION").map(Into::into))
+		.expect("VAULT_FILES_LOCATION variable must be provided");
+	
+	if !files_location.exists() {
+		fs::create_dir_all(&files_location).expect("Could not create folder for files at: {files_location}");
+	}
+	
 	let context = AppState {
 		leptos_options,
 		database: Database::open(db_file).unwrap(),
+		files_location,
 	};
 	
 	let app = Router::<AppState>::new()
@@ -56,6 +67,7 @@ async fn handle_leptos_routes(State(app_state): State<AppState>, request: Reques
 		app_state.leptos_options.clone(),
 		move || {
 			provide_context(app_state.database.clone());
+			provide_context(app_state.files_location.clone());
 		},
 		App
 	);
@@ -66,7 +78,9 @@ async fn handle_leptos_routes(State(app_state): State<AppState>, request: Reques
 async fn handle_server_fns(State(app_state): State<AppState>, request: Request<Body>) -> impl IntoResponse {
 	handle_server_fns_with_context(
 		move || {
+			// TODO isn't there a better way?
 			provide_context(app_state.database.clone());
+			provide_context(app_state.files_location.clone());
 		},
 		request
 	).await

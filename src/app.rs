@@ -1,4 +1,4 @@
-use crate::{account::Auth, app::file_area::FileArea, app_error_view::{AppError, AppErrorView}, vault::{CipherFolderName, Vault}};
+use crate::{account::Auth, app::file_area::FileArea, app_error_view::{AppError, AppErrorView}, file_store::FileStore, vault::{Cipher, FolderName, Vault}};
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
@@ -17,9 +17,9 @@ import_style!(style, "app.css");
 
 #[derive(Clone, Debug)]
 struct UserData {
-	vault: StoredValue<Vault>,
-	auth: StoredValue<Auth>,
-	initial_folder_names: Vec<CipherFolderName>,
+	vault: Vault,
+	auth: Auth,
+	initial_folders: Vec<Cipher<FolderName>>,
 }
 
 #[derive(Params, Clone, PartialEq, Eq, Debug)]
@@ -31,7 +31,10 @@ struct FolderParams {
 pub fn App() -> impl IntoView {
 	provide_meta_context();
 	
-	let (user_data, set_user_data) = create_signal(None);
+	let (user_data, set_user_data) = create_signal::<Option<UserData>>(None);
+	let file_store = create_owning_memo(move |_| (with!(|user_data| user_data.as_ref().map(|user_data|
+		FileStore::new(user_data.vault.clone(), user_data.auth.clone())
+	)), true));
 	
 	view! {
 		<Title text="Vault" />
@@ -45,8 +48,8 @@ pub fn App() -> impl IntoView {
 			}
 			.into_view()
 		}>
-			<header class={style::title}>Vault</header>
-			<main class={style::content}>
+			<header class=style::title>Vault</header>
+			<main class=style::content>
 				<Routes>
 					<Route path="/" view=move || view! {
 						<Show
@@ -54,20 +57,17 @@ pub fn App() -> impl IntoView {
 						>
 							<Login set_user_data />
 						</Show>
-						{move || user_data().map(|user_data| view! {
-							<Folders user_data />
-							<div class=style::file_area>
+						{move || user_data.with(|user_data| user_data.as_ref().map(|user_data| view! {
+							<Folders vault=user_data.vault.clone() auth=user_data.auth.clone() initial_folders=user_data.initial_folders.clone()>
 								<Outlet />
-							</div>
-						})}
+							</Folders>
+						}))}
 					}>
 						<Route path="" view=|| "" />
 						<Route path="/folder/:index" view=move || {
-							let params = use_params::<FolderParams>();
-							
-							view! {
-								<FileArea />
-							}
+							file_store().map(|file_store| view! {
+								<FileArea file_store />
+							})
 						} />
 					</Route>
 				</Routes>

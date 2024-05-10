@@ -2,7 +2,7 @@ use leptos::{server, ServerFnError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::vault::{CipherFolderName, PasswordHash, Salt};
+use crate::vault::{Cipher, FolderName, PasswordHash, Salt};
 
 #[allow(unused)]
 use crate::db;
@@ -33,7 +33,7 @@ impl Auth {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LoginData {
 	pub auth: Auth,
-	pub folder_names: Vec<CipherFolderName>,
+	pub folder_names: Vec<Cipher<FolderName>>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Error, Debug)]

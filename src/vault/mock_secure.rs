@@ -1,4 +1,5 @@
-use std::convert::Infallible;
+use std::{marker::PhantomData, convert::Infallible};
+
 use super::*;
 
 impl Salt {
@@ -20,26 +21,20 @@ impl Password {
 }
 
 #[derive(Clone)]
-pub struct SecretFolderName(());
+pub struct Secret<T: CipherSecret> {
+	_inner: PhantomData<T>,
+}
 
-impl SecretFolderName {
-	pub fn new(_name: String) -> Self {
+impl<T: CipherSecret> Secret<T> {
+	pub fn hide(_value: T) -> Self {
 		panic!("Not implemented for ssr");
 	}
 	
-	pub fn as_str(&self) -> &str {
+	pub fn reveal_secret(&self) -> &T {
 		panic!("Not implemented for ssr");
 	}
-}
-
-impl leptos::IntoView for SecretFolderName {
-	fn into_view(self) -> leptos::View {
-		panic!("Not implemented for ssr");
-	}
-}
-
-impl From<SecretFolderName> for wasm_bindgen::JsValue {
-	fn from(_value: SecretFolderName) -> Self {
+	
+	pub fn into_revealed_secret(self) -> T {
 		panic!("Not implemented for ssr");
 	}
 }
@@ -52,11 +47,11 @@ impl Vault {
 		panic!("Not implemented for ssr");
 	}
 	
-	pub fn encrypt_folder_name(&self, _secret: &SecretFolderName) -> Result<CipherFolderName, EncryptionError> {
+	pub fn encrypt<T: CipherSecret>(&self, _secret: &Secret<T>) -> Result<Cipher<T>, EncryptionError> {
 		panic!("Not implemented for ssr");
 	}
 	
-	pub fn decrypt_folder_name(&self, _cipher_name: &CipherFolderName) -> Result<SecretFolderName, DecryptionError> {
+	pub fn decrypt<T: CipherSecret>(&self, _cipher: &Cipher<T>) -> Result<Secret<T>, DecryptionError> {
 		panic!("Not implemented for ssr");
 	}
 }
