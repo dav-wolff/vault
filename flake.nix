@@ -19,14 +19,22 @@
 			url = "github:nix-community/fenix";
 			inputs.nixpkgs.follows = "nixpkgs";
 		};
+		
+		cache_bust = {
+			url = "github:dav-wolff/cache_bust";
+			inputs.nixpkgs.follows = "nixpkgs";
+			inputs.fenix.follows = "fenix";
+		};
 	};
 	
-	outputs = { self, nixpkgs, flake-utils, crane, fenix }:
+	outputs = { self, nixpkgs, flake-utils, crane, fenix, cache_bust }:
 		flake-utils.lib.eachDefaultSystem (system:
 			let
 				pkgs = import nixpkgs {
 					inherit system;
 				};
+				
+				cachebust = cache_bust.packages.${system}.cli;
 				
 				fenixPackage = fenix.packages.${system};
 				fenixNative = fenixPackage.complete; # nightly
@@ -40,7 +48,7 @@
 					fenixWasm.rust-std
 				];
 				fenixRustAnalyzer = fenixPackage.rust-analyzer;
-				craneLib = crane.lib.${system}.overrideToolchain fenixToolchain;
+				craneLib = (crane.mkLib pkgs).overrideToolchain fenixToolchain;
 				
 				nameVersion = craneLib.crateNameFromCargoToml { cargoToml = ./Cargo.toml; };
 				pname = nameVersion.pname;
@@ -95,15 +103,15 @@
 							];
 							
 							buildPhaseCargoCommand = ''
-								mkdir temp-home &&
+								mkdir temp-home
 								HOME=$(pwd)/temp-home
 								CARGO_LOG=TRACE
 								wasm-pack build --target web --release --no-typescript --no-pack -- --locked --features=hydrate
 							'';
 							
 							installPhaseCommand = ''
-								mkdir -p $out &&
-								mv pkg/${pname}_bg.wasm $out/${pname}_bg.wasm &&
+								mkdir -p $out
+								mv pkg/${pname}_bg.wasm $out/${pname}_bg.wasm
 								uglifyjs pkg/${pname}.js -o $out/${pname}.js --verbose
 							'';
 							
@@ -116,29 +124,38 @@
 							nativeBuildInputs = with pkgs; [
 								makeWrapper
 								stylance-cli
+								cachebust
 								dart-sass
 								lightningcss
 							];
 							
 							buildPhase = ''
-								stylance . --output-file vault.scss &&
+								stylance . --output-file vault.scss
 								sass vault.scss vault.css
 							'';
 							
 							installPhase = ''
-								mkdir -p $out/bin &&
-								cp ${bin}/bin/${pname} $out/bin/${pname} &&
-								mv assets $out/site &&
-								cp -r ${wasm} $out/site/pkg &&
-								chmod +w $out/site/pkg &&
+								mkdir -p $out/bin
+								cp ${bin}/bin/${pname} $out/bin/${pname}
+								cachebust assets --out $out/site
+								cp -r ${wasm} $out/site/pkg
+								chmod +w $out/site/pkg
 								lightningcss --minify vault.css --output-file $out/site/pkg/vault.css
+								echo -n "wasm: " > $out/bin/hashes.txt
+								cachebust $out/site/pkg --file vault_bg.wasm --print hash >> $out/bin/hashes.txt
+								echo -n "js: " >> $out/bin/hashes.txt
+								cachebust $out/site/pkg --file vault.js --print hash >> $out/bin/hashes.txt
+								echo -n "css: " >> $out/bin/hashes.txt
+								cachebust $out/site/pkg --file vault.css --print hash >> $out/bin/hashes.txt
 							'';
 							
 							fixupPhase = ''
 								wrapProgram $out/bin/${pname} \
 									--set LEPTOS_OUTPUT_NAME ${pname} \
 									--set LEPTOS_SITE_ROOT $out/site \
-									--set LEPTOS_ENV PROD
+									--set LEPTOS_ENV PROD \
+									--set LEPTOS_HASH_FILES true \
+									--set LEPTOS_HASH_FILE_NAME hashes.txt
 							'';
 						};
 					in {
@@ -173,6 +190,7 @@
 					shellHook = ''
 						export VAULT_DB_FILE="dev_data/vault.db"
 						export VAULT_FILES_LOCATION="dev_data/files"
+						export CACHE_BUST_SKIP_HASHING="1"
 					'';
 					
 					packages = with pkgs; [

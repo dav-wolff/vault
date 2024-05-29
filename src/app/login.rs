@@ -1,5 +1,6 @@
 use leptos::*;
 use stylance::import_style;
+use cache_bust::asset;
 
 use crate::{account::{self, CreateAccountError, LoginError}, utils::classes, vault::{Password, Salt, Vault}};
 
@@ -219,7 +220,7 @@ where
 				class={classes([style::button, style::back_button])}
 				on:click=move |_| set_form(Form::Login)
 			>
-				<img src="/back_arrow.svg" alt="Back" />
+				<img src=asset!("/back_arrow.svg") alt="Back" />
 			</button>
 			<p class={style::prompt}>Create account</p>
 			<p class={style::label}>Username</p>

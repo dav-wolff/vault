@@ -2,7 +2,8 @@ mod serve_file;
 
 use std::{fs, path::PathBuf};
 
-use axum::{body::Body, extract::{FromRef, Request, State}, response::IntoResponse, routing::post, Router};
+use axum::{body::Body, extract::{FromRef, Request, State}, handler::Handler, middleware::map_response, response::IntoResponse, routing::post, Router};
+use http::{header, HeaderValue};
 use leptos::*;
 use leptos_axum::{generate_route_list, handle_server_fns_with_context, render_app_to_stream_with_context, LeptosRoutes};
 use tokio::net::TcpListener;
@@ -62,6 +63,8 @@ pub async fn serve() {
 		.unwrap();
 }
 
+const CACHE_CONTROL_HTML: HeaderValue = HeaderValue::from_static("no-cache");
+
 async fn handle_leptos_routes(State(app_state): State<AppState>, request: Request<Body>) -> impl IntoResponse {
 	let handler = render_app_to_stream_with_context(
 		app_state.leptos_options.clone(),
@@ -72,7 +75,9 @@ async fn handle_leptos_routes(State(app_state): State<AppState>, request: Reques
 		App
 	);
 	
-	handler(request).await
+	let mut response = handler(request).await;
+	response.headers_mut().append(header::CACHE_CONTROL, CACHE_CONTROL_HTML);
+	response
 }
 
 async fn handle_server_fns(State(app_state): State<AppState>, request: Request<Body>) -> impl IntoResponse {

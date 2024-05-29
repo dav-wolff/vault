@@ -1,6 +1,7 @@
 use leptos::*;
 use leptos_router::{use_location, use_navigate};
 use stylance::{classes, import_style};
+use cache_bust::asset;
 
 use crate::{account::Auth, files, vault::{Cipher, FolderName, Secret, Vault}};
 
@@ -116,12 +117,12 @@ pub fn Folders(
 	
 	view! {
 		<button class=style::sidebar_button on:click=move |_| set_sidebar_open(true)>
-			<img class=style::icon src="/menu.svg" alt="Sidebar" />
+			<img class=style::icon src=asset!("/menu.svg") alt="Sidebar" />
 		</button>
 		<div class=style::sidebar_container>
 			<div class=sidebar_classes>
 				<button class=classes!(style::sidebar_button, style::sidebar_back_button) on:click=move |_| set_sidebar_open(false)>
-					<img class=style::icon src="/back_arrow.svg" alt="Close" />
+					<img class=style::icon src=asset!("/back_arrow.svg") alt="Close" />
 				</button>
 				<For
 					each=move || folders()

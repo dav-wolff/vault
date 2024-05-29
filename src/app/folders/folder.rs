@@ -3,6 +3,7 @@ use std::time::Duration;
 use leptos::*;
 use leptos_router::A;
 use stylance::{classes, import_style};
+use cache_bust::asset;
 
 use crate::{app::folders::CurrentFolder, vault::{Cipher, FolderName, Secret}};
 
@@ -98,10 +99,10 @@ where
 			</A>
 			<div class=style::background />
 			<button class=style::icon_button on:click=move |_| set_editing(true)>
-				<img class=style::icon src="/edit.svg" alt="Edit" />
+				<img class=style::icon src=asset!("/edit.svg") alt="Edit" />
 			</button>
 			<button class={classes!(style::icon_button, style::delete_button)} on:click=move |_| delete_folder(is_selected.get_untracked())>
-				<img class=style::icon src="/cross.svg" alt="Delete" />
+				<img class=style::icon src=asset!("/cross.svg") alt="Delete" />
 			</button>
 		</div>
 	}
