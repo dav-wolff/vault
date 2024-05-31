@@ -3,9 +3,16 @@ default:
 
 watch:
 	cargo leptos watch &\
-	stylance --watch $(dirname $(cargo locate-project --message-format plain))
+	stylance --watch .
 
 serve:
-	@cd $(dirname $(cargo locate-project --message-format plain))
 	nix build
 	result/bin/vault
+
+clean:
+	rm result
+	rm -r dev_data
+	rm -r target
+
+clean-data:
+	rm -r dev_data
