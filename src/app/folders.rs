@@ -3,7 +3,7 @@ use leptos_router::{use_location, use_navigate};
 use stylance::{classes, import_style};
 use cache_bust::asset;
 
-use crate::{account::Auth, files, vault::{Cipher, FolderName, Secret, Vault}};
+use crate::{account::Auth, app::notify::Notify, files, utils::ToPrettyError, vault::{Cipher, FolderName, Secret, Vault}};
 
 use super::input::TextInput;
 
@@ -23,17 +23,25 @@ pub fn Folders(
 	initial_folders: Vec<Cipher<FolderName>>,
 	children: Children,
 ) -> impl IntoView {
+	let notify = Notify::from_context();
+	
 	let initial_folders: Vec<_> = initial_folders.into_iter()
 		.enumerate()
-		.map(|(index, folder_name)| {
-			// TODO: handle error
-			let name = vault.decrypt(&folder_name).unwrap();
+		.filter_map(|(index, folder_name)| {
+			let name = match vault.decrypt(&folder_name) {
+				Ok(name) => name,
+				Err(err) => {
+					notify.error(format!("Error decrypting folder name for folder {index}"));
+					leptos_dom::error!("Error decrypting folder name for folder {index}: {err}");
+					return None;
+				},
+			};
 			
-			FolderData {
+			Some(FolderData {
 				id: folder_name,
 				index: create_rw_signal(index),
 				name: create_rw_signal(name),
-			}
+			})
 		})
 		.collect();
 	
@@ -63,7 +71,7 @@ pub fn Folders(
 	);
 	
 	let create_folder = move |()| {
-		if new_folder_name.with(String::is_empty) {
+		if new_folder_name.with_untracked(String::is_empty) {
 			folder_name_error.set(Some("Please enter a folder name"));
 		}
 		
@@ -71,14 +79,20 @@ pub fn Folders(
 			name: new_folder_name.get_untracked(),
 		});
 		
-		// TODO: handle error
-		let cipher_folder_name = vault.encrypt(&folder_name).unwrap();
+		let cipher_folder_name = match vault.encrypt(&folder_name) {
+			Ok(name) => name,
+			Err(err) => {
+				notify.error("Failed to encrypt folder name");
+				leptos_dom::error!("Failed to encrypt folder name: {err}");
+				return;
+			},
+		};
 		
 		let auth = auth.clone();
 		
 		spawn_local(async move {
 			if let Err(err) = files::create_folder(auth, cipher_folder_name.clone()).await {
-				// TODO: handle error
+				notify.error(err.to_pretty_error());
 				leptos_dom::error!("Error creating folder: {err}");
 				return;
 			};

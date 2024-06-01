@@ -6,7 +6,7 @@ mod file;
 
 use file::*;
 
-use crate::{app::folders::CurrentFolder, file_store::FileStore, vault::{FileContent, FileInfo, Secret}};
+use crate::{app::{folders::CurrentFolder, notify::Notify}, file_store::FileStore, vault::{FileContent, FileInfo, Secret}};
 
 import_style!(style, "file_area.scss");
 
@@ -52,12 +52,19 @@ pub fn FileArea(file_store: FileStore) -> impl IntoView {
 	
 	let files = move || with!(|file_store| file_store.files_in_folder_tracked(current_folder().expect("FileArea should not be shown with no folder selected")));
 	
+	let notify = Notify::from_context();
+	
 	// TODO temporary workaround for weird behavior with the effect not updating properly
 	create_effect(move |_| with!(|file_store| file_store.files_in_folder_tracked(current_folder().unwrap())));
 	
 	let add_files = move |file_list: FileList| async move {
 		let folder = current_folder.get_untracked().expect("FileArea should not be shown with no folder selected");
 		let files = parse_files(file_list).await;
+		
+		for (file_info, _) in &files {
+			notify.info(format!("Uploading {}...", file_info.reveal_secret().name));
+		}
+		
 		let file_store = file_store.get_value();
 		file_store.add_files(folder, files).await;
 	};

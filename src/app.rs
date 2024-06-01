@@ -4,12 +4,15 @@ use leptos_meta::*;
 use leptos_router::*;
 use stylance::import_style;
 
+pub mod notify;
+
 mod input;
 mod local_image;
 mod login;
 mod folders;
 mod file_area;
 
+use notify::NotifyProvider;
 use login::Login;
 use folders::Folders;
 
@@ -49,29 +52,31 @@ pub fn App() -> impl IntoView {
 			.into_view()
 		}>
 			<header class=style::title>Vault</header>
-			<main class=style::content>
-				<Routes>
-					<Route path="/" view=move || view! {
-						<Show
-							when=move || user_data.with(Option::is_none)
-						>
-							<Login set_user_data />
-						</Show>
-						{move || user_data.with(|user_data| user_data.as_ref().map(|user_data| view! {
-							<Folders vault=user_data.vault.clone() auth=user_data.auth.clone() initial_folders=user_data.initial_folders.clone()>
-								<Outlet />
-							</Folders>
-						}))}
-					}>
-						<Route path="" view=|| "" />
-						<Route path="/folder/:index" view=move || {
-							file_store().map(|file_store| view! {
-								<FileArea file_store />
-							})
-						} />
-					</Route>
-				</Routes>
-			</main>
+			<NotifyProvider>
+				<main class=style::content>
+					<Routes>
+						<Route path="/" view=move || view! {
+							<Show
+								when=move || user_data.with(Option::is_none)
+							>
+								<Login set_user_data />
+							</Show>
+							{move || user_data.with(|user_data| user_data.as_ref().map(|user_data| view! {
+								<Folders vault=user_data.vault.clone() auth=user_data.auth.clone() initial_folders=user_data.initial_folders.clone()>
+									<Outlet />
+								</Folders>
+							}))}
+						}>
+							<Route path="" view=|| "" />
+							<Route path="/folder/:index" view=move || {
+								file_store().map(|file_store| view! {
+									<FileArea file_store />
+								})
+							} />
+						</Route>
+					</Routes>
+				</main>
+			</NotifyProvider>
 		</Router>
 	}
 }

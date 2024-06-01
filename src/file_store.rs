@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use leptos::{create_rw_signal, spawn_local, RwSignal, SignalUpdate, SignalWith};
+use leptos::{create_rw_signal, leptos_dom, spawn_local, RwSignal, SignalUpdate, SignalWith};
 
-use crate::{account::Auth, files, vault::{Cipher, FileContent, FileInfo, FolderName, Secret, Vault}};
+use crate::{account::Auth, app::notify::Notify, files, utils::ToPrettyError, vault::{Cipher, FileContent, FileInfo, FolderName, Secret, Vault}};
 
 use self::folder_state::FolderState;
 
@@ -14,19 +14,31 @@ pub struct FileData {
 	pub info: Secret<FileInfo>,
 }
 
-async fn load_folder(auth: Auth, vault: Vault, folder: Cipher<FolderName>) -> Vec<FileData> {
-	// TODO handle error
-	let files = files::get_files(auth, folder).await.unwrap();
+async fn load_folder(notify: Notify, auth: Auth, vault: Vault, folder: Cipher<FolderName>) -> Vec<FileData> {
+	let files = match files::get_files(auth, folder).await {
+		Ok(files) => files,
+		Err(err) => {
+			notify.error(err.to_pretty_error());
+			leptos_dom::error!("Error fetching files: {err}");
+			return Vec::new();
+		},
+	};
 	
 	files.into_iter()
-		.map(|id| {
-			// TODO handle error
-			let info = vault.decrypt(&id).unwrap();
+		.filter_map(|id| {
+			let info = match vault.decrypt(&id) {
+				Ok(info) => info,
+				Err(err) => {
+					notify.error("Encountered corrupted file info");
+					leptos_dom::error!("Error decrypting file info: {err}");
+					return None;
+				},
+			};
 			
-			FileData {
+			Some(FileData {
 				id,
 				info,
-			}
+			})
 		})
 		.collect()
 }
@@ -66,12 +78,13 @@ impl FileStore {
 			folders.insert(folder.clone(), Default::default());
 		});
 		
+		let notify = Notify::from_context();
 		let vault = self.vault.clone();
 		let auth = self.auth.clone();
 		let folders = self.folders;
 		
 		spawn_local(async move {
-			let files = load_folder(auth, vault, folder.clone()).await;
+			let files = load_folder(notify, auth, vault, folder.clone()).await;
 			
 			folders.update(|folders| {
 				let entry = folders.get_mut(&folder).expect("None was just inserted");

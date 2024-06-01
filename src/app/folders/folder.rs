@@ -5,7 +5,7 @@ use leptos_router::A;
 use stylance::{classes, import_style};
 use cache_bust::asset;
 
-use crate::{app::folders::CurrentFolder, vault::{Cipher, FolderName, Secret}};
+use crate::{app::{folders::CurrentFolder, notify::Notify}, vault::{Cipher, FolderName, Secret}};
 
 import_style!(style, "folder.scss");
 

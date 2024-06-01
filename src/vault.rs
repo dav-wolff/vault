@@ -32,9 +32,9 @@ pub enum EncryptionError {
 
 #[derive(Clone, Error, Debug)]
 pub enum DecryptionError {
-	#[error("Error decrypting ciphertext")]
+	#[error("Error decrypting ciphertext: {0}")]
 	ChaChaError(#[from] chacha20poly1305::Error),
-	#[error("Failed to parse plain text as UTF-8")]
+	#[error("Failed to parse plain text as UTF-8: {0}")]
 	ParseUtf8Error(#[from] Utf8Error),
 	#[error("Plain text ended unexpectedly")]
 	UnexpectedEndOfBytes,

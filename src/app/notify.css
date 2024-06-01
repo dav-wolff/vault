@@ -1,0 +1,53 @@
+.container {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 10;
+	pointer-events: none;
+	width: 100%;
+	padding-bottom: 20px;
+}
+
+.notification {
+	margin-bottom: 5px;
+	box-sizing: border-box;
+	width: 100%;
+	padding: 0 10px 0 10px;
+	text-align: center;
+}
+
+.info, .error {
+	position: relative;
+	pointer-events: auto;
+	display: inline-block;
+	border-radius: 8px;
+	margin: 0;
+	padding: 10px;
+	font-size: 20pt;
+	font-weight: 500;
+}
+
+.info {
+	background: #eeeeee;
+	opacity: 0.8;
+}
+
+.error {
+	background: #DD403A;
+}
+
+@keyframes fade_out {
+	from {
+		opacity: 1;
+	}
+	
+	to {
+		opacity: 0;
+	}
+}
+
+.fading {
+	animation: fade_out 500ms;
+	opacity: 0;
+}

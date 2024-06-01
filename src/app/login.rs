@@ -1,10 +1,10 @@
 use leptos::*;
-use stylance::import_style;
+use stylance::{classes, import_style};
 use cache_bust::asset;
 
-use crate::{account::{self, CreateAccountError, LoginError}, utils::classes, vault::{Password, Salt, Vault}};
+use crate::{account::{self, CreateAccountError, LoginError}, utils::ToPrettyError, vault::{Password, Salt, Vault}};
 
-use super::{input::{TextInput, InputType}, UserData};
+use super::{input::{TextInput, InputType}, notify::Notify, UserData};
 
 import_style!(style, "login.css");
 
@@ -42,6 +42,8 @@ where
 	let username_error = create_rw_signal(None);
 	let password_error = create_rw_signal(None);
 	
+	let notify = Notify::from_context();
+	
 	let clear_errors = move || {
 		if username_error.with_untracked(Option::is_some) {
 			username_error.set(None);
@@ -76,7 +78,7 @@ where
 		spawn_local(async move {
 			let salt = match account::get_user_salt(username.clone()).await {
 				Err(err) => {
-					// TODO: handle error
+					notify.error(err.to_pretty_error());
 					leptos_dom::error!("Error retrieving salt: {err}");
 					return;
 				},
@@ -91,7 +93,7 @@ where
 			
 			match account::login(username, hash).await {
 				Err(err) => {
-					// TODO: handle error
+					notify.error(err.to_pretty_error());
 					leptos_dom::error!("Error logging in: {err}");
 				},
 				Ok(Err(LoginError::UnknownUser)) => {
@@ -123,7 +125,7 @@ where
 			<button class={style::button} on:click=move |_| login(())>Login</button>
 			<hr class={style::hr} />
 			<button
-				class={classes([style::button, style::switch_button])}
+				class=classes!(style::button, style::switch_button)
 				on:click=move |_| set_form(Form::CreateAccount)
 			>
 				Create account
@@ -147,6 +149,8 @@ where
 	let username_error = create_rw_signal(None);
 	let password_error = create_rw_signal(None);
 	let password_confirm_error = create_rw_signal(None);
+	
+	let notify = Notify::from_context();
 	
 	let clear_errors = move || {
 		if username_error.with_untracked(Option::is_some) {
@@ -189,13 +193,21 @@ where
 			return;
 		};
 		
-		let salt = Salt::generate().unwrap(); // TODO: handle error
+		let salt = match Salt::generate() {
+			Ok(salt) => salt,
+			Err(err) => {
+				notify.error("Could not generate random salt");
+				leptos_dom::error!("Error generating salt: {err}");
+				return;
+			},
+		};
+		
 		let hash = password.hash(&salt);
 		
 		spawn_local(async move {
 			match account::create_account(username, salt.clone(), hash).await {
 				Err(err) => {
-					//TODO: handle error
+					notify.error(err.to_pretty_error());
 					leptos_dom::error!("Error creating account: {err}");
 				},
 				Ok(Err(CreateAccountError::UsernameTaken)) => {
@@ -217,7 +229,7 @@ where
 	view! {
 		<div hidden=move || !shown()>
 			<button
-				class={classes([style::button, style::back_button])}
+				class=classes!(style::button, style::back_button)
 				on:click=move |_| set_form(Form::Login)
 			>
 				<img src=asset!("/back_arrow.svg") alt="Back" />
