@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use leptos::{create_rw_signal, leptos_dom, spawn_local, RwSignal, SignalUpdate, SignalWith};
+use leptos::{create_rw_signal, leptos_dom, spawn_local, RwSignal, ServerFnError, SignalUpdate, SignalWith};
 
-use crate::{account::Auth, app::notify::Notify, files, utils::ToPrettyError, vault::{Cipher, FileContent, FileInfo, FolderName, Secret, Vault}};
+use crate::{account::Auth, app::notify::Notify, files::{self, FilesError}, utils::ToPrettyError, vault::{Cipher, FileContent, FileInfo, FolderName, Secret, Vault}};
 
 use self::folder_state::FolderState;
 
@@ -17,6 +17,11 @@ pub struct FileData {
 async fn load_folder(notify: Notify, auth: Auth, vault: Vault, folder: Cipher<FolderName>) -> Vec<FileData> {
 	let files = match files::get_files(auth, folder).await {
 		Ok(files) => files,
+		Err(ServerFnError::WrappedServerError(FilesError::NotAuthenticated)) => {
+			notify.error("Not authenticated");
+			// TODO prompt to login again
+			return Vec::new();
+		}
 		Err(err) => {
 			notify.error(err.to_pretty_error());
 			leptos_dom::error!("Error fetching files: {err}");
@@ -44,7 +49,7 @@ async fn load_folder(notify: Notify, auth: Auth, vault: Vault, folder: Cipher<Fo
 }
 
 async fn load_file(auth: Auth, vault: Vault, file: Cipher<FileInfo>) -> Secret<FileContent> {
-	// TODO handle error
+	// TODO handle error and prompt to login when not authenticated
 	let content = files::download_file(auth, file).await.unwrap();
 	
 	// TODO handle error
@@ -117,7 +122,7 @@ impl FileStore {
 			.map(|(content, file_data)| files::upload_file(self.auth.clone(), folder.clone(), file_data.id.clone(), content));
 		
 		for result in futures::future::join_all(upload_futures).await {
-			// TODO handle errors
+			// TODO handle errors and prompt to login when not authenticated
 			result.unwrap();
 		}
 		

@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 #![deny(non_snake_case)]
 
+#![feature(duration_constructors)]
+
 #[cfg(feature = "ssr")]
 pub mod server;
 

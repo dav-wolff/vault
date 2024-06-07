@@ -1,5 +1,6 @@
 #[cfg(feature = "hydrate")]
 mod secure;
+use generic_array::GenericArray;
 #[cfg(feature = "hydrate")]
 pub use secure::*;
 
@@ -26,21 +27,23 @@ use serde_big_array::BigArray;
 pub enum EncryptionError {
 	#[error("Could not generate random nonce")]
 	NonceGenerationError(#[from] getrandom::Error),
+	#[cfg(feature = "hydrate")]
 	#[error("Error encrypting plain text")]
 	ChaChaError(#[from] chacha20poly1305::Error),
 }
 
 #[derive(Clone, Error, Debug)]
 pub enum DecryptionError {
-	#[error("Error decrypting ciphertext: {0}")]
-	ChaChaError(#[from] chacha20poly1305::Error),
 	#[error("Failed to parse plain text as UTF-8: {0}")]
 	ParseUtf8Error(#[from] Utf8Error),
 	#[error("Plain text ended unexpectedly")]
 	UnexpectedEndOfBytes,
+	#[cfg(feature = "hydrate")]
+	#[error("Error decrypting ciphertext: {0}")]
+	ChaChaError(#[from] chacha20poly1305::Error),
 }
 
-type Nonce = chacha20poly1305::aead::Nonce<chacha20poly1305::XChaCha20Poly1305>;
+type Nonce = GenericArray<u8, generic_array::typenum::U24>;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Salt {

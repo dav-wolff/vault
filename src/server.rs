@@ -1,19 +1,21 @@
 mod serve_file;
 
-use std::{fs, path::PathBuf};
+use std::{fs, path::{Path, PathBuf}};
 
-use axum::{body::Body, extract::{FromRef, Request, State}, handler::Handler, middleware::map_response, response::IntoResponse, routing::post, Router};
+use axum::{body::Body, extract::{FromRef, Request, State}, response::IntoResponse, routing::post, Router};
 use http::{header, HeaderValue};
 use leptos::*;
 use leptos_axum::{generate_route_list, handle_server_fns_with_context, render_app_to_stream_with_context, LeptosRoutes};
 use tokio::net::TcpListener;
+use getrandom::getrandom;
 
-use crate::{app::App, db::Database};
+use crate::{account::Authenticator, app::App, db::Database};
 use serve_file::serve_file;
 
 #[derive(Clone, Debug)]
 pub struct AppState {
 	leptos_options: LeptosOptions,
+	authenticator: Authenticator,
 	database: Database,
 	files_location: PathBuf,
 }
@@ -24,6 +26,27 @@ impl FromRef<AppState> for LeptosOptions {
 	}
 }
 
+macro_rules! get_env {
+	($key: literal) => {
+		std::env::var_os($key)
+			.map(Into::into)
+			.or(option_env!($key).map(Into::into))
+			.expect(concat!($key, " variable must be provided"))
+	}
+}
+
+fn get_auth_key(path: &Path) -> [u8; 64] {
+	if path.exists() {
+		fs::read(&path).expect(&format!("Could not read auth key file at: {path:?}"))
+			.try_into().expect("Auth key should be 64 bytes long")
+	} else {
+		let mut key = [0; 64];
+		getrandom(&mut key).expect("Could not generate random key");
+		fs::write(path, &key).expect(&format!("Could not write auth key file at: {path:?}"));
+		key
+	}
+}
+
 pub async fn serve() {
 	// <https://github.com/leptos-rs/start-axum#executing-a-server-on-a-remote-machine-without-the-toolchain>
 	let config = get_configuration(None).await.unwrap();
@@ -31,15 +54,11 @@ pub async fn serve() {
 	let addr = leptos_options.site_addr;
 	let routes = generate_route_list(App);
 	
-	let db_file: PathBuf = std::env::var_os("VAULT_DB_FILE")
-		.map(Into::into)
-		.or(option_env!("VAULT_DB_FILE").map(Into::into))
-		.expect("VAULT_DB_FILE variable must be provided");
+	let auth_key_file: PathBuf = get_env!("VAULT_AUTH_KEY");
+	let db_file: PathBuf = get_env!("VAULT_DB_FILE");
+	let files_location: PathBuf = get_env!("VAULT_FILES_LOCATION");
 	
-	let files_location: PathBuf = std::env::var_os("VAULT_FILES_LOCATION")
-		.map(Into::into)
-		.or(option_env!("VAULT_FILES_LOCATION").map(Into::into))
-		.expect("VAULT_FILES_LOCATION variable must be provided");
+	let auth_key = get_auth_key(&auth_key_file);
 	
 	if !files_location.exists() {
 		fs::create_dir_all(&files_location).expect("Could not create folder for files at: {files_location}");
@@ -47,6 +66,7 @@ pub async fn serve() {
 	
 	let context = AppState {
 		leptos_options,
+		authenticator: Authenticator::new(auth_key),
 		database: Database::open(db_file).unwrap(),
 		files_location,
 	};
@@ -84,6 +104,7 @@ async fn handle_server_fns(State(app_state): State<AppState>, request: Request<B
 	handle_server_fns_with_context(
 		move || {
 			// TODO isn't there a better way?
+			provide_context(app_state.authenticator.clone());
 			provide_context(app_state.database.clone());
 			provide_context(app_state.files_location.clone());
 		},

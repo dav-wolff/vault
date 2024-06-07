@@ -17,9 +17,9 @@ pub fn use_db() -> Database {
 
 #[derive(Error, Debug)]
 pub enum Error {
-	#[error("Error opening database file")]
+	#[error("Error opening database file: {0}")]
 	FileError(#[from] io::Error),
-	#[error("SQLite error")]
+	#[error("SQLite error: ${0}")]
 	SQLiteError(#[from] rusqlite::Error),
 	#[error("Not found")]
 	NotFound,
@@ -134,24 +134,37 @@ impl Database {
 		Ok(())
 	}
 	
-	pub fn get_files(&self, folder: &Cipher<FolderName>) -> Result<Vec<Cipher<FileInfo>>, Error> {
+	pub fn get_files(&self, username: &str, folder: &Cipher<FolderName>) -> Result<Vec<Cipher<FileInfo>>, Error> {
 		let connection = self.connection.lock().unwrap();
-		let mut statement = connection.prepare_cached("SELECT info FROM files WHERE folder=?1")?;
+		let mut statement = connection.prepare_cached("
+			SELECT files.info
+				FROM files JOIN folders ON files.folder=folders.name
+				WHERE folders.user=?1 AND files.folder=?2
+		")?;
 		
 		let folder = folder.as_bytes();
 		
-		let results = statement.query_map([folder], |row| {
+		let results = statement.query_map((username, folder), |row| {
 			Ok(Cipher::<FileInfo>::from_bytes(row.get(0)?))
 		})?;
 		
 		Ok(results.collect::<Result<_, _>>()?)
 	}
 	
-	pub fn add_file(&self, folder: &Cipher<FolderName>, file_info: &Cipher<FileInfo>, file_id: &str) -> Result<(), Error> {
+	pub fn add_file(&self, username: &str, folder: &Cipher<FolderName>, file_info: &Cipher<FileInfo>, file_id: &str) -> Result<(), Error> {
 		let connection = self.connection.lock().unwrap();
-		let mut statement = connection.prepare_cached("INSERT INTO files (folder, info, file_id) VALUES (?1, ?2, ?3)")?;
+		let mut statement = connection.prepare_cached("SELECT 1 FROM folders WHERE folders.user=?1 AND folders.name=?2")?;
 		
 		let folder = folder.as_bytes();
+		
+		let mut folder_result = statement.query((username, folder))?;
+		
+		if folder_result.next()?.is_none() {
+			return Err(Error::NotFound);
+		}
+		
+		let mut statement = connection.prepare_cached("INSERT INTO files (folder, info, file_id) VALUES (?1, ?2, ?3)")?;
+		
 		let file_info = file_info.as_bytes();
 		
 		statement.execute((
@@ -163,13 +176,17 @@ impl Database {
 		Ok(())
 	}
 	
-	pub fn get_file_id(&self, file: &Cipher<FileInfo>) -> Result<String, Error> {
+	pub fn get_file_id(&self, username: &str, file: &Cipher<FileInfo>) -> Result<String, Error> {
 		let connection = self.connection.lock().unwrap();
-		let mut statement = connection.prepare_cached("SELECT file_id FROM files WHERE info=?1")?;
+		let mut statement = connection.prepare_cached("
+			SELECT file_id
+				FROM files JOIN folders ON files.folder=folders.name
+				WHERE folders.user=?1 AND files.info=?2
+			")?;
 		
 		let file_info = file.as_bytes();
 		
-		let mut results = statement.query_map([file_info], |row| {
+		let mut results = statement.query_map((username, file_info), |row| {
 			row.get(0)
 		})?;
 		

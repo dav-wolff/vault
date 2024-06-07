@@ -1,4 +1,6 @@
-use leptos::{server, ServerFnError};
+use std::time::Duration;
+
+use leptos::{server, use_context, ServerFnError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -7,28 +9,8 @@ use crate::vault::{Cipher, FolderName, PasswordHash, Salt};
 #[allow(unused)]
 use crate::db;
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct Auth {
-	username: String,
-}
-
-#[cfg(feature = "ssr")]
-impl Auth {
-	fn new(username: String) -> Self {
-		Self {
-			username,
-		}
-	}
-	
-	pub fn is_valid(&self) -> bool {
-		// TODO: authorization
-		true
-	}
-	
-	pub fn username(&self) -> &str {
-		&self.username
-	}
-}
+mod auth;
+pub use auth::*;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LoginData {
@@ -65,8 +47,10 @@ pub async fn login(username: String, hash: PasswordHash) -> Result<Result<LoginD
 	
 	let folder_names = db.get_folders(&username)?;
 	
+	let authenticator: Authenticator = use_context().unwrap();
+	
 	Ok(Ok(LoginData {
-		auth: Auth::new(username),
+		auth: authenticator.sign(username, Duration::from_days(1)),
 		folder_names,
 	}))
 }
@@ -87,8 +71,10 @@ pub async fn create_account(username: String, salt: Salt, hash: PasswordHash) ->
 	
 	db.insert_user(&username, salt, hash)?;
 	
+	let authenticator: Authenticator = use_context().unwrap();
+	
 	Ok(Ok(LoginData {
-		auth: Auth::new(username),
+		auth: authenticator.sign(username, Duration::from_days(1)),
 		folder_names: Vec::new(),
 	}))
 }

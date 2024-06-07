@@ -64,7 +64,7 @@
 					;
 				};
 				
-				makeVault = {dbFile ? null, filesLocation ? null}:
+				makeVault = {authKey ? null, dbFile ? null, filesLocation ? null}:
 					let
 						commonArgs = {
 							inherit src;
@@ -81,18 +81,16 @@
 							cargoExtraArgs = "--locked --target=wasm32-unknown-unknown --features=hydrate";
 						});
 						
-						buildArgs = commonArgs // {
-							VAULT_DB_FILE = dbFile;
-							VAULT_FILES_LOCATION = filesLocation;
-						};
-						
-						bin = craneLib.buildPackage (buildArgs // {
+						bin = craneLib.buildPackage (commonArgs // {
 							cargoArtifacts = cargoBinArtifacts;
 							pname = "${pname}-bin";
 							cargoExtraArgs = "--locked --bins --features=ssr";
+							VAULT_AUTH_KEY = authKey;
+							VAULT_DB_FILE = dbFile;
+							VAULT_FILES_LOCATION = filesLocation;
 						});
 						
-						wasm = craneLib.buildPackage (buildArgs // {
+						wasm = craneLib.buildPackage (commonArgs // {
 							cargoArtifacts = cargoWasmArtifacts;
 							pname = "${pname}-wasm";
 							nativeBuildInputs = with pkgs; [
@@ -188,6 +186,7 @@
 					checks = self.checks.${system};
 					
 					shellHook = ''
+						export VAULT_AUTH_KEY="dev_data/auth.key"
 						export VAULT_DB_FILE="dev_data/vault.db"
 						export VAULT_FILES_LOCATION="dev_data/files"
 						export CACHE_BUST_SKIP_HASHING="1"

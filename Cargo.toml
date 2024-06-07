@@ -20,10 +20,9 @@ serde = "1"
 serde-big-array = "0.5"
 stylance = { version = "0.5", features = ["nightly"] }
 getrandom = { version = "0.2", features = ["std", "js"] }
-chacha20poly1305 = { version = "0.10", features = ["std"] }
+sha2 = "0.10"
 gloo-file = { version = "0.3", features = ["futures"] }
 cache_bust = { version = "0.2", default-features = false, features = ["macro"] }
-# only needed to enable serde feature
 generic-array = { version = "0.14", features = ["serde"] }
 
 leptos_axum = { version = "0.6", optional = true }
@@ -33,10 +32,11 @@ tower = { version = "0.4", optional = true }
 tower-http = { version = "0.5", features = ["fs"], optional = true }
 tracing = { version = "0.1", optional = true }
 rusqlite = { version = "0.31", features = ["bundled"], optional = true }
+hmac = { version = "0.12", optional = true }
 
 console_error_panic_hook = { version = "0.1", optional = true }
-sha2 = { version = "0.10", optional = true }
 argon2 = { version = "0.5", optional = true }
+chacha20poly1305 = { version = "0.10", features = ["std"], optional = true }
 
 [features]
 ssr = [
@@ -47,14 +47,15 @@ ssr = [
 	"dep:leptos_axum",
 	"dep:tracing",
 	"dep:rusqlite",
+	"dep:hmac",
 	"leptos/ssr",
 	"leptos_meta/ssr",
 	"leptos_router/ssr",
 ]
 hydrate = [
 	"dep:console_error_panic_hook",
-	"dep:sha2",
 	"dep:argon2",
+	"dep:chacha20poly1305",
 	"leptos/hydrate",
 	"leptos_meta/hydrate",
 	"leptos_router/hydrate",

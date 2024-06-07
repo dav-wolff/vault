@@ -3,7 +3,7 @@ use leptos_router::{use_location, use_navigate};
 use stylance::{classes, import_style};
 use cache_bust::asset;
 
-use crate::{account::Auth, app::notify::Notify, files, utils::ToPrettyError, vault::{Cipher, FolderName, Secret, Vault}};
+use crate::{account::Auth, app::notify::Notify, files::{self, FilesError}, utils::ToPrettyError, vault::{Cipher, FolderName, Secret, Vault}};
 
 use super::input::TextInput;
 
@@ -91,10 +91,18 @@ pub fn Folders(
 		let auth = auth.clone();
 		
 		spawn_local(async move {
-			if let Err(err) = files::create_folder(auth, cipher_folder_name.clone()).await {
-				notify.error(err.to_pretty_error());
-				leptos_dom::error!("Error creating folder: {err}");
-				return;
+			match files::create_folder(auth, cipher_folder_name.clone()).await {
+				Err(ServerFnError::WrappedServerError(FilesError::NotAuthenticated)) => {
+					notify.error("Not authenticated");
+					// TODO prompt to login again
+					return;
+				},
+				Err(err) => {
+					notify.error(err.to_pretty_error());
+					leptos_dom::error!("Error creating folder: {err}");
+					return;
+				},
+				Ok(()) => (),
 			};
 			
 			set_folders.update(|folders| {
