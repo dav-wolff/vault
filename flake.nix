@@ -64,7 +64,7 @@
 					;
 				};
 				
-				makeVault = {authKey ? null, dbFile ? null, filesLocation ? null}:
+				makeVault = {port ? null, authKey ? null, dbFile ? null, filesLocation ? null}:
 					let
 						commonArgs = {
 							inherit src;
@@ -85,6 +85,7 @@
 							cargoArtifacts = cargoBinArtifacts;
 							pname = "${pname}-bin";
 							cargoExtraArgs = "--locked --bins --features=ssr";
+							VAULT_PORT = port;
 							VAULT_AUTH_KEY = authKey;
 							VAULT_DB_FILE = dbFile;
 							VAULT_FILES_LOCATION = filesLocation;
@@ -186,6 +187,7 @@
 					checks = self.checks.${system};
 					
 					shellHook = ''
+						export VAULT_PORT="3000"
 						export VAULT_AUTH_KEY="dev_data/auth.key"
 						export VAULT_DB_FILE="dev_data/vault.db"
 						export VAULT_FILES_LOCATION="dev_data/files"

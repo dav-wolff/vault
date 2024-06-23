@@ -1,6 +1,6 @@
 mod serve_file;
 
-use std::{fs, path::{Path, PathBuf}};
+use std::{fs, net::Ipv4Addr, path::{Path, PathBuf}};
 
 use axum::{body::Body, extract::{FromRef, Request, State}, response::IntoResponse, routing::post, Router};
 use http::{header, HeaderValue};
@@ -27,12 +27,17 @@ impl FromRef<AppState> for LeptosOptions {
 }
 
 macro_rules! get_env {
-	($key: literal) => {
-		std::env::var_os($key)
-			.map(Into::into)
-			.or(option_env!($key).map(Into::into))
+	($key: literal, $map: expr) => {
+		std::env::var($key)
+			.ok()
+			.map($map)
+			.or(option_env!($key).map($map))
 			.expect(concat!($key, " variable must be provided"))
-	}
+	};
+	
+	($key: literal) => {
+		get_env!($key, Into::into)
+	};
 }
 
 fn get_auth_key(path: &Path) -> [u8; 64] {
@@ -51,9 +56,9 @@ pub async fn serve() {
 	// <https://github.com/leptos-rs/start-axum#executing-a-server-on-a-remote-machine-without-the-toolchain>
 	let config = get_configuration(None).await.unwrap();
 	let leptos_options = config.leptos_options;
-	let addr = leptos_options.site_addr;
 	let routes = generate_route_list(App);
 	
+	let port: u16 = get_env!("VAULT_PORT", |str| str.parse()).expect("VAULT_PORT must be a number");
 	let auth_key_file: PathBuf = get_env!("VAULT_AUTH_KEY");
 	let db_file: PathBuf = get_env!("VAULT_DB_FILE");
 	let files_location: PathBuf = get_env!("VAULT_FILES_LOCATION");
@@ -77,8 +82,8 @@ pub async fn serve() {
 		.fallback(serve_file)
 		.with_state(context);
 	
-	let listener = TcpListener::bind(&addr).await.unwrap();
-	logging::log!("Server running on http://{}", &addr);
+	let listener = TcpListener::bind((Ipv4Addr::new(127, 0, 0, 1), port)).await.unwrap();
+	logging::log!("Server running on port {port}");
 	axum::serve(listener, app.into_make_service()).await
 		.unwrap();
 }
