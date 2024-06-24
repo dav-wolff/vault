@@ -82,7 +82,7 @@ pub async fn serve() {
 		.fallback(serve_file)
 		.with_state(context);
 	
-	let listener = TcpListener::bind((Ipv4Addr::new(127, 0, 0, 1), port)).await.unwrap();
+	let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), port)).await.unwrap();
 	logging::log!("Server running on port {port}");
 	axum::serve(listener, app.into_make_service()).await
 		.unwrap();
