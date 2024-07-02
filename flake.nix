@@ -28,162 +28,53 @@
 	};
 	
 	outputs = { self, nixpkgs, flake-utils, crane, fenix, cache_bust }:
-		flake-utils.lib.eachDefaultSystem (system:
+		{
+			overlays = {
+				cachebust = final: prev: {
+					cachebust = cache_bust.packages.${prev.system}.cli;
+				};
+				
+				craneLib = final: prev: let
+					fenixPackage = fenix.packages.${prev.system};
+					fenixNative = fenixPackage.complete; # nightly
+					fenixWasm = fenixPackage.targets.wasm32-unknown-unknown.latest;
+					fenixToolchain = fenixPackage.combine [
+						fenixNative.rustc
+						fenixNative.rust-src
+						fenixNative.cargo
+						fenixNative.rust-docs
+						fenixNative.clippy
+						fenixWasm.rust-std
+					];
+					craneLib = (crane.mkLib final).overrideToolchain fenixToolchain;
+				in {
+					inherit craneLib;
+				};
+				
+				vault = final: prev: {
+					vault-rs = prev.callPackage ./vault.nix {};
+				};
+				
+				default = with self.overlays; nixpkgs.lib.composeManyExtensions [cachebust craneLib vault];
+			};
+		} // flake-utils.lib.eachDefaultSystem (system:
 			let
 				pkgs = import nixpkgs {
 					inherit system;
-				};
-				
-				cachebust = cache_bust.packages.${system}.cli;
-				
-				fenixPackage = fenix.packages.${system};
-				fenixNative = fenixPackage.complete; # nightly
-				fenixWasm = fenixPackage.targets.wasm32-unknown-unknown.latest;
-				fenixToolchain = fenixPackage.combine [
-					fenixNative.rustc
-					fenixNative.rust-src
-					fenixNative.cargo
-					fenixNative.rust-docs
-					fenixNative.clippy
-					fenixWasm.rust-std
-				];
-				fenixRustAnalyzer = fenixPackage.rust-analyzer;
-				craneLib = (crane.mkLib pkgs).overrideToolchain fenixToolchain;
-				
-				nameVersion = craneLib.crateNameFromCargoToml { cargoToml = ./Cargo.toml; };
-				pname = nameVersion.pname;
-				version = nameVersion.version;
-				
-				src = with pkgs.lib; cleanSourceWith {
-					src = craneLib.path ./.;
-					filter = path: type:
-						(hasInfix "/assets/" path) ||
-						(hasInfix "/style/" path) ||
-						(hasInfix "/src/" path && (hasSuffix ".css" path || hasSuffix ".scss" path)) ||
-						(craneLib.filterCargoSources path type)
-					;
-				};
-				
-				makeVault = {port ? null, authKey ? null, dbFile ? null, filesLocation ? null}:
-					let
-						commonArgs = {
-							inherit src;
-						};
-						
-						cargoBinArtifacts = craneLib.buildDepsOnly (commonArgs // {
-							pname = "${pname}-bin";
-							cargoExtraArgs = "--locked --features=ssr";
-						});
-						
-						cargoWasmArtifacts = craneLib.buildDepsOnly (commonArgs // {
-							pname = "${pname}-wasm";
-							cargoBuildCommand = "cargo build --profile wasm-release";
-							cargoExtraArgs = "--locked --target=wasm32-unknown-unknown --features=hydrate";
-						});
-						
-						bin = craneLib.buildPackage (commonArgs // {
-							cargoArtifacts = cargoBinArtifacts;
-							pname = "${pname}-bin";
-							cargoExtraArgs = "--locked --bins --features=ssr";
-							VAULT_PORT = port;
-							VAULT_AUTH_KEY = authKey;
-							VAULT_DB_FILE = dbFile;
-							VAULT_FILES_LOCATION = filesLocation;
-						});
-						
-						wasm = craneLib.buildPackage (commonArgs // {
-							cargoArtifacts = cargoWasmArtifacts;
-							pname = "${pname}-wasm";
-							nativeBuildInputs = with pkgs; [
-								wasm-pack
-								wasm-bindgen-cli
-								binaryen
-								nodePackages.uglify-js
-							];
-							
-							buildPhaseCargoCommand = ''
-								mkdir temp-home
-								HOME=$(pwd)/temp-home
-								CARGO_LOG=TRACE
-								wasm-pack build --target web --release --no-typescript --no-pack -- --locked --features=hydrate
-							'';
-							
-							installPhaseCommand = ''
-								mkdir -p $out
-								mv pkg/${pname}_bg.wasm $out/${pname}_bg.wasm
-								uglifyjs pkg/${pname}.js -o $out/${pname}.js --verbose
-							'';
-							
-							doCheck = false; # can't run tests for wasm build
-						});
-						
-						package = pkgs.stdenv.mkDerivation {
-							inherit pname version src;
-							
-							nativeBuildInputs = with pkgs; [
-								makeWrapper
-								stylance-cli
-								cachebust
-								dart-sass
-								lightningcss
-							];
-							
-							buildPhase = ''
-								stylance . --output-file vault.scss
-								sass vault.scss vault.css
-							'';
-							
-							installPhase = ''
-								mkdir -p $out/bin
-								cp ${bin}/bin/${pname} $out/bin/${pname}
-								cachebust assets --out $out/site
-								cp -r ${wasm} $out/site/pkg
-								chmod +w $out/site/pkg
-								lightningcss --minify vault.css --output-file $out/site/pkg/vault.css
-								echo -n "wasm: " > $out/bin/hashes.txt
-								cachebust $out/site/pkg --file vault_bg.wasm --print hash >> $out/bin/hashes.txt
-								echo -n "js: " >> $out/bin/hashes.txt
-								cachebust $out/site/pkg --file vault.js --print hash >> $out/bin/hashes.txt
-								echo -n "css: " >> $out/bin/hashes.txt
-								cachebust $out/site/pkg --file vault.css --print hash >> $out/bin/hashes.txt
-							'';
-							
-							fixupPhase = ''
-								wrapProgram $out/bin/${pname} \
-									--set LEPTOS_OUTPUT_NAME ${pname} \
-									--set LEPTOS_SITE_ROOT $out/site \
-									--set LEPTOS_ENV PROD \
-									--set LEPTOS_HASH_FILES true \
-									--set LEPTOS_HASH_FILE_NAME hashes.txt
-							'';
-						};
-					in {
-						inherit wasm bin package;
-					};
-				
-				defaultVault = makeVault {};
-				
-				wasm = defaultVault.wasm // {
-					withAttrs = attrs: (makeVault attrs).wasm;
-				};
-				
-				bin = defaultVault.bin // {
-					withAttrs = attrs: (makeVault attrs).bin;
-				};
-				
-				package = defaultVault.package // {
-					withAttrs = attrs: (makeVault attrs).package;
+					overlays = [
+						self.overlays.default
+					];
 				};
 			in {
-				packages.wasm = wasm;
-				packages.bin = bin;
-				packages.default = package;
+				packages.wasm = pkgs.vault-rs.wasm;
+				packages.bin = pkgs.vault-rs.bin;
+				packages.default = pkgs.vault-rs;
 				
 				checks = {
-					vault = package;
+					vault = self.packages.${system}.default;
 				};
 				
-				devShells.default = craneLib.devShell {
+				devShells.default = pkgs.craneLib.devShell {
 					checks = self.checks.${system};
 					
 					shellHook = ''
@@ -195,7 +86,7 @@
 					'';
 					
 					packages = with pkgs; [
-						fenixRustAnalyzer
+						fenix.packages.${system}.rust-analyzer
 						just
 						cargo-leptos
 						binaryen
