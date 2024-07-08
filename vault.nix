@@ -4,7 +4,7 @@
 , wasm-pack
 , wasm-bindgen-cli
 , binaryen
-, nodePackages
+, uglify-js
 , makeWrapper
 , stylance-cli
 , cachebust
@@ -63,7 +63,7 @@ let
 			wasm-pack
 			wasm-bindgen-cli
 			binaryen
-			nodePackages.uglify-js
+			uglify-js
 		];
 		
 		buildPhaseCargoCommand = ''
