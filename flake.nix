@@ -27,35 +27,42 @@
 		};
 	};
 	
-	outputs = { self, nixpkgs, flake-utils, crane, fenix, cache_bust }:
-		{
+	outputs = { self, nixpkgs, flake-utils, ... } @ inputs: let
+		 makeCraneLib = pkgs: let
+				fenixNative = pkgs.fenix.complete; # nightly
+				fenixWasm = pkgs.fenix.targets.wasm32-unknown-unknown.latest; # nightly
+				fenixToolchain = pkgs.fenix.combine [
+					fenixNative.rustc
+					fenixNative.rust-src
+					fenixNative.cargo
+					fenixNative.rust-docs
+					fenixNative.clippy
+					fenixWasm.rust-std
+				];
+			in (inputs.crane.mkLib pkgs).overrideToolchain fenixToolchain;
+		in {
 			overlays = {
 				cachebust = final: prev: {
-					cachebust = cache_bust.packages.${prev.system}.cli;
+					cachebust = inputs.cache_bust.packages.${prev.system}.cli;
 				};
 				
-				craneLib = final: prev: let
-					fenixPackage = fenix.packages.${prev.system};
-					fenixNative = fenixPackage.complete; # nightly
-					fenixWasm = fenixPackage.targets.wasm32-unknown-unknown.latest;
-					fenixToolchain = fenixPackage.combine [
-						fenixNative.rustc
-						fenixNative.rust-src
-						fenixNative.cargo
-						fenixNative.rust-docs
-						fenixNative.clippy
-						fenixWasm.rust-std
-					];
-					craneLib = (crane.mkLib final).overrideToolchain fenixToolchain;
+				fenix = final: prev: {
+					fenix = inputs.fenix.packages.${prev.system};
+				};
+				
+				vault = final: prev: let
+					craneLib = makeCraneLib final;
 				in {
-					inherit craneLib;
+					vault-rs = prev.callPackage ./vault.nix {
+						inherit craneLib;
+					};
 				};
 				
-				vault = final: prev: {
-					vault-rs = prev.callPackage ./vault.nix {};
-				};
-				
-				default = with self.overlays; nixpkgs.lib.composeManyExtensions [cachebust craneLib vault];
+				default = nixpkgs.lib.composeManyExtensions (with self.overlays; [
+					cachebust
+					fenix
+					vault
+				]);
 			};
 		} // flake-utils.lib.eachDefaultSystem (system:
 			let
@@ -65,6 +72,7 @@
 						self.overlays.default
 					];
 				};
+				craneLib = makeCraneLib pkgs;
 			in {
 				packages.wasm = pkgs.vault-rs.wasm;
 				packages.bin = pkgs.vault-rs.bin;
@@ -74,7 +82,7 @@
 					vault = self.packages.${system}.default;
 				};
 				
-				devShells.default = pkgs.craneLib.devShell {
+				devShells.default = craneLib.devShell {
 					checks = self.checks.${system};
 					
 					shellHook = ''
@@ -86,7 +94,7 @@
 					'';
 					
 					packages = with pkgs; [
-						fenix.packages.${system}.rust-analyzer
+						fenix.rust-analyzer
 						just
 						cargo-leptos
 						binaryen
