@@ -58,10 +58,17 @@
 					};
 				};
 				
+				pinWasmBindgen = final: prev: {
+					vault-rs = prev.vault-rs.override {
+						inherit (nixpkgs.legacyPackages.${prev.system}) wasm-pack wasm-bindgen-cli;
+					};
+				};
+				
 				default = nixpkgs.lib.composeManyExtensions (with self.overlays; [
 					cachebust
 					fenix
 					vault
+					pinWasmBindgen
 				]);
 			};
 		} // flake-utils.lib.eachDefaultSystem (system:
