@@ -1,7 +1,7 @@
 use axum::{body::Body, extract::State};
 use axum::response::{IntoResponse, Response};
 use http::{header, HeaderValue, Request, StatusCode, Uri};
-use leptos::LeptosOptions;
+use leptos::config::LeptosOptions;
 use leptos_axum::render_app_to_stream;
 use tower::ServiceExt;
 use tower_http::services::ServeDir;
@@ -20,7 +20,7 @@ pub async fn serve_file(uri: Uri, State(options): State<LeptosOptions>, request:
 		.body(Body::empty())
 		.unwrap();
 	
-	let file_response = ServeDir::new(&options.site_root)
+	let file_response = ServeDir::new(&*options.site_root)
 		.oneshot(file_request).await
 		.expect("Error serving file");
 	
@@ -30,7 +30,7 @@ pub async fn serve_file(uri: Uri, State(options): State<LeptosOptions>, request:
 		response
 	} else {
 		// render error page
-		let handler = render_app_to_stream(options.to_owned(), App);
+		let handler = render_app_to_stream(App);
 		handler(request).await
 	}
 }

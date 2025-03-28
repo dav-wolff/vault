@@ -7,13 +7,13 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-leptos = { version = "0.6", features = ["nightly"] }
-leptos_meta = { version = "0.6", features = ["nightly"] }
-leptos_router = { version = "0.6", features = ["nightly"] }
+leptos = { version = "0.7", features = ["nightly"] }
+leptos_meta = { version = "0.7" }
+leptos_router = { version = "0.7", features = ["nightly"] }
 web-sys = { version = "0.3", features = ["DragEvent", "DataTransfer", "FileList", "File", "Blob", "HtmlInputElement"] }
-thiserror = "1"
+thiserror = "2"
 http = "1"
-wasm-bindgen = "=0.2.92"
+wasm-bindgen = "=0.2.100"
 wasm-bindgen-futures = "0.4"
 futures = "0.3"
 serde = "1"
@@ -25,13 +25,13 @@ gloo-file = { version = "0.3", features = ["futures"] }
 cache_bust = { version = "0.2", default-features = false, features = ["macro"] }
 generic-array = { version = "0.14", features = ["serde"] }
 
-leptos_axum = { version = "0.6", optional = true }
+leptos_axum = { version = "0.7", optional = true }
 axum = { version = "0.7", optional = true }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
-tower = { version = "0.4", optional = true }
-tower-http = { version = "0.5", features = ["fs"], optional = true }
+tower = { version = "0.5", features = ["util"], optional = true }
+tower-http = { version = "0.6", features = ["fs"], optional = true }
 tracing = { version = "0.1", optional = true }
-rusqlite = { version = "0.31", features = ["bundled"], optional = true }
+rusqlite = { version = "0.34", features = ["bundled"], optional = true }
 hmac = { version = "0.12", optional = true }
 
 console_error_panic_hook = { version = "0.1", optional = true }
@@ -57,8 +57,6 @@ hydrate = [
 	"dep:argon2",
 	"dep:chacha20poly1305",
 	"leptos/hydrate",
-	"leptos_meta/hydrate",
-	"leptos_router/hydrate",
 ]
 
 [profile.dev.package.argon2]

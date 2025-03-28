@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use leptos::{create_rw_signal, leptos_dom, spawn_local, RwSignal, ServerFnError, SignalUpdate, SignalWith};
+use leptos::prelude::*;
+use leptos::leptos_dom;
+use leptos::task::spawn_local;
 
 use crate::{account::Auth, app::notify::Notify, files::{self, FilesError}, utils::ToPrettyError, vault::{Cipher, FileContent, FileInfo, FolderName, Secret, Vault}};
 
@@ -21,7 +23,7 @@ async fn load_folder(notify: Notify, auth: Auth, vault: Vault, folder: Cipher<Fo
 			notify.error("Not authenticated");
 			// TODO prompt to login again
 			return Vec::new();
-		}
+		},
 		Err(err) => {
 			notify.error(err.to_pretty_error());
 			leptos_dom::error!("Error fetching files: {err}");
@@ -69,8 +71,8 @@ impl FileStore {
 		Self {
 			vault,
 			auth,
-			folders: create_rw_signal(HashMap::new()),
-			files: create_rw_signal(HashMap::new()),
+			folders: RwSignal::new(HashMap::new()),
+			files: RwSignal::new(HashMap::new()),
 		}
 	}
 	

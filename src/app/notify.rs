@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::VecDeque, time::Duration};
 
-use leptos::*;
+use leptos::prelude::*;
 use stylance::{classes, import_style};
 
 import_style!(style, "notify.css");
@@ -51,7 +51,7 @@ impl Notify {
 
 #[component]
 pub fn NotifyProvider(children: Children) -> impl IntoView {
-	let (notifications, set_notifications) = create_signal(VecDeque::new());
+	let (notifications, set_notifications) = signal(VecDeque::new());
 	
 	provide_context(Notify(set_notifications));
 	
@@ -92,9 +92,9 @@ where
 {
 	let NotificationData {kind, message, ..} = data;
 	
-	let (is_fading, set_fading) = create_signal(false);
+	let (is_fading, set_fading) = signal(false);
 	
-	create_effect(move |_| {
+	Effect::new(move || {
 		set_timeout(move || set_fading(true), Duration::from_millis(3_000));
 	});
 	

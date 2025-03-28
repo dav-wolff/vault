@@ -1,4 +1,5 @@
-use leptos::*;
+use leptos::prelude::*;
+use leptos::ev;
 use stylance::import_style;
 
 import_style!(style, "input.css");
@@ -47,7 +48,7 @@ pub fn TextInput(
 	
 	let on_keydown = move |event: ev::KeyboardEvent| {
 		if event.key_code() == 13 { // enter
-			on_submit(());
+			on_submit.run(());
 		}
 	};
 	

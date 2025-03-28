@@ -4,12 +4,12 @@ use std::{fs, net::Ipv4Addr, path::{Path, PathBuf}};
 
 use axum::{body::Body, extract::{FromRef, Request, State}, response::IntoResponse, routing::post, Router};
 use http::{header, HeaderValue};
-use leptos::*;
+use leptos::{logging, prelude::*};
 use leptos_axum::{generate_route_list, handle_server_fns_with_context, render_app_to_stream_with_context, LeptosRoutes};
 use tokio::net::TcpListener;
 use getrandom::getrandom;
 
-use crate::{account::Authenticator, app::App, db::Database};
+use crate::{account::Authenticator, app::{shell, App}, db::Database};
 use serve_file::serve_file;
 
 #[derive(Clone, Debug)]
@@ -54,7 +54,7 @@ fn get_auth_key(path: &Path) -> [u8; 64] {
 
 pub async fn serve() {
 	// <https://github.com/leptos-rs/start-axum#executing-a-server-on-a-remote-machine-without-the-toolchain>
-	let config = get_configuration(None).await.unwrap();
+	let config = get_configuration(None).unwrap();
 	let leptos_options = config.leptos_options;
 	let routes = generate_route_list(App);
 	
@@ -91,13 +91,13 @@ pub async fn serve() {
 const CACHE_CONTROL_HTML: HeaderValue = HeaderValue::from_static("no-cache");
 
 async fn handle_leptos_routes(State(app_state): State<AppState>, request: Request<Body>) -> impl IntoResponse {
+	let leptos_options = app_state.leptos_options;
 	let handler = render_app_to_stream_with_context(
-		app_state.leptos_options.clone(),
 		move || {
 			provide_context(app_state.database.clone());
 			provide_context(app_state.files_location.clone());
 		},
-		App
+		move || shell(leptos_options.clone())
 	);
 	
 	let mut response = handler(request).await;

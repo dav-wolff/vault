@@ -1,10 +1,11 @@
-use std::time::Duration;
-
-use leptos::{server, use_context, ServerFnError};
+use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::vault::{Cipher, FolderName, PasswordHash, Salt};
+
+#[cfg(feature = "ssr")]
+use std::time::Duration;
 
 #[allow(unused)]
 use crate::db;

@@ -1,7 +1,8 @@
 use std::time::Duration;
 
-use leptos::*;
-use leptos_router::A;
+use leptos::prelude::*;
+use leptos::{ev, html};
+use leptos_router::components::A;
 use stylance::{classes, import_style};
 use cache_bust::asset;
 
@@ -33,16 +34,16 @@ where
 {
 	let FolderData {id, index, name} = data;
 	
-	let (is_editing, set_editing) = create_signal(false);
-	let (new_folder_name, set_new_folder_name) = create_signal(name.get_untracked());
+	let (is_editing, set_editing) = signal(false);
+	let (new_folder_name, set_new_folder_name) = signal(name.get_untracked());
 	
 	let CurrentFolder(selected_folder) = use_context().unwrap();
 	let is_selected = Signal::derive(move || selected_folder().is_some_and(|selected_id| selected_id == id));
 	
-	let input_ref: NodeRef<html::Input> = create_node_ref();
+	let input_ref: NodeRef<html::Input> = NodeRef::new();
 	
-	create_effect(move |_| {
-		if let Some(input) = input_ref() {
+	Effect::new(move || {
+		if let Some(input) = input_ref.get() {
 			// workaround, because without a timeout the focus doesn't work
 			set_timeout(move || {
 				let _ = input.focus();
@@ -82,7 +83,7 @@ where
 	
 	view! {
 		<div class=move || classes!(style::folder, is_selected().then_some(style::selected))>
-			<A class=style::folder_button href>
+			<A attr:class=style::folder_button href>
 				<Show
 					when=move || is_editing()
 					fallback=move || view! {<p class=style::folder_name>{name().into_revealed_secret().name}</p>}

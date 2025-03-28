@@ -1,4 +1,7 @@
-use leptos::*;
+use leptos::prelude::*;
+use leptos::{ev, html, leptos_dom};
+use leptos::either::Either;
+use leptos::task::spawn_local;
 use stylance::import_style;
 use gloo_file::FileList;
 
@@ -43,19 +46,21 @@ async fn parse_files(file_list: FileList) -> Vec<(Secret<FileInfo>, Secret<FileC
 
 #[component]
 pub fn FileArea(file_store: FileStore) -> impl IntoView {
-	let (is_drag_target, set_is_drag_target) = create_signal(false);
-	let input_ref: NodeRef<html::Input> = create_node_ref();
+	let (is_drag_target, set_is_drag_target) = signal(false);
+	let input_ref: NodeRef<html::Input> = NodeRef::new();
 	
 	let CurrentFolder(current_folder) = use_context().unwrap();
 	
-	let file_store = store_value(file_store);
+	let file_store = StoredValue::new_local(file_store);
 	
-	let files = move || with!(|file_store| file_store.files_in_folder_tracked(current_folder().expect("FileArea should not be shown with no folder selected")));
+	let files = move || file_store.read_value().files_in_folder_tracked(current_folder().expect("FileArea should not be shown with no folder selected"));
 	
 	let notify = Notify::from_context();
 	
 	// TODO temporary workaround for weird behavior with the effect not updating properly
-	create_effect(move |_| with!(|file_store| file_store.files_in_folder_tracked(current_folder().unwrap())));
+	Effect::new(move || {
+		file_store.read_value().files_in_folder_tracked(current_folder().unwrap());
+	});
 	
 	let add_files = move |file_list: FileList| async move {
 		let folder = current_folder.get_untracked().expect("FileArea should not be shown with no folder selected");
@@ -106,7 +111,7 @@ pub fn FileArea(file_store: FileStore) -> impl IntoView {
 	};
 	
 	let handle_file_input = move |event: ev::Event| {
-		let Some(input) = input_ref() else {
+		let Some(input) = input_ref.get() else {
 			return;
 		};
 		
@@ -121,7 +126,7 @@ pub fn FileArea(file_store: FileStore) -> impl IntoView {
 	view! {
 		<div class=style::main on:dragenter=handle_drag on:dragover=handle_drag>
 			{move || match files() {
-				Some(files) => view! {
+				Some(files) => Either::Left(view! {
 					// TODO Does this rerender everytime a file is added?
 					<For
 						// TODO why does this need to be cloned?
@@ -131,10 +136,10 @@ pub fn FileArea(file_store: FileStore) -> impl IntoView {
 							<File file_store file />
 						}
 					/>
-				}.into_view(),
-				None => view! {
+				}),
+				None => Either::Right(view! {
 					<p>Loading...</p>
-				}.into_view(),
+				}),
 			}}
 			<label class=style::upload_button>
 				<input type="file" multiple on:change=handle_file_input node_ref=input_ref />

@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use leptos::ServerFnError;
+use leptos::prelude::ServerFnError;
 
 pub trait ToPrettyError {
 	fn to_pretty_error(&self) -> Cow<'static, str>;

@@ -1,7 +1,8 @@
 use crate::{account::Auth, app::file_area::FileArea, app_error_view::{AppError, AppErrorView}, file_store::FileStore, vault::{Cipher, FolderName, Vault}};
-use leptos::*;
-use leptos_meta::*;
-use leptos_router::*;
+use leptos::prelude::*;
+use leptos_meta::{provide_meta_context, Stylesheet, Title};
+use leptos_router::path;
+use leptos_router::components::{Outlet, ParentRoute, Route, Router, Routes};
 use stylance::import_style;
 
 pub mod notify;
@@ -25,37 +26,46 @@ struct UserData {
 	initial_folders: Vec<Cipher<FolderName>>,
 }
 
-#[derive(Params, Clone, PartialEq, Eq, Debug)]
-struct FolderParams {
-	index: usize,
+pub fn shell(options: LeptosOptions) -> impl IntoView {
+	view! {
+		<!DOCTYPE html>
+		<html>
+			<head>
+				<title>Vault</title>
+				<link rel="stylesheet" href="/pkg/vault.css" />
+				<AutoReload options=options.clone() />
+				<HydrationScripts options />
+			</head>
+			<body>
+				<App />
+			</body>
+		</html>
+	}
 }
 
 #[component]
 pub fn App() -> impl IntoView {
 	provide_meta_context();
 	
-	let (user_data, set_user_data) = create_signal::<Option<UserData>>(None);
-	let file_store = create_owning_memo(move |_| (with!(|user_data| user_data.as_ref().map(|user_data|
+	let (user_data, set_user_data) = signal_local::<Option<UserData>>(None);
+	let file_store = Memo::new_owning(move |_| (user_data.read().as_ref().map(|user_data|
 		FileStore::new(user_data.vault.clone(), user_data.auth.clone())
-	)), true));
+	), true));
 	
 	view! {
-		<Title text="Vault" />
-		<Stylesheet id="leptos" href="/pkg/vault.css" />
-		
-		<Router fallback=|| {
-			let mut outside_errors = Errors::default();
-			outside_errors.insert_with_default_key(AppError::NotFound);
-			view! {
-				<AppErrorView outside_errors/>
-			}
-			.into_view()
-		}>
+		<Router>
 			<header class=style::title>Vault</header>
 			<NotifyProvider>
 				<main class=style::content>
-					<Routes>
-						<Route path="/" view=move || view! {
+					<Routes fallback=|| {
+						let mut outside_errors = Errors::default();
+						outside_errors.insert_with_default_key(AppError::NotFound);
+						view! {
+							<AppErrorView outside_errors/>
+						}
+						.into_view()
+					}>
+						<ParentRoute path=path!("/") view=move || view! {
 							<Show
 								when=move || user_data.with(Option::is_none)
 							>
@@ -67,13 +77,13 @@ pub fn App() -> impl IntoView {
 								</Folders>
 							}))}
 						}>
-							<Route path="" view=|| "" />
-							<Route path="/folder/:index" view=move || {
+							<Route path=path!("") view=|| "" />
+							<Route path=path!("/folder/:index") view=move || {
 								file_store().map(|file_store| view! {
 									<FileArea file_store />
 								})
 							} />
-						</Route>
+						</ParentRoute>
 					</Routes>
 				</main>
 			</NotifyProvider>

@@ -1,5 +1,7 @@
-use leptos::*;
-use leptos_router::{use_location, use_navigate};
+use leptos::prelude::*;
+use leptos::leptos_dom;
+use leptos::task::spawn_local;
+use leptos_router::hooks::{use_location, use_navigate};
 use stylance::{classes, import_style};
 use cache_bust::asset;
 
@@ -39,20 +41,20 @@ pub fn Folders(
 			
 			Some(FolderData {
 				id: folder_name,
-				index: create_rw_signal(index),
-				name: create_rw_signal(name),
+				index: RwSignal::new(index),
+				name: RwSignal::new(name),
 			})
 		})
 		.collect();
 	
-	let new_folder_name = create_rw_signal(String::new());
-	let folder_name_error = create_rw_signal(None);
-	let (folders, set_folders) = create_signal(initial_folders);
-	let (is_sidebar_open, set_sidebar_open) = create_signal(true);
+	let new_folder_name = RwSignal::new(String::new());
+	let folder_name_error = RwSignal::new(None);
+	let (folders, set_folders) = signal(initial_folders);
+	let (is_sidebar_open, set_sidebar_open) = signal(true);
 	
 	let location = use_location();
 	
-	let selected_folder = create_memo(move |_| {
+	let selected_folder = Memo::new(move |_| {
 		location.pathname.with(|pathname| {
 			pathname.strip_prefix("/folder/").and_then(|folder_index|
 				// TODO handle # and ? in url?
@@ -70,7 +72,7 @@ pub fn Folders(
 		is_sidebar_open().then_some(style::sidebar_open)
 	);
 	
-	let create_folder = move |()| {
+	let create_folder = move || {
 		if new_folder_name.with_untracked(String::is_empty) {
 			folder_name_error.set(Some("Please enter a folder name"));
 		}
@@ -109,8 +111,8 @@ pub fn Folders(
 				folders.push(
 					FolderData {
 						id: cipher_folder_name,
-						index: create_rw_signal(folders.len()),
-						name: create_rw_signal(folder_name),
+						index: RwSignal::new(folders.len()),
+						name: RwSignal::new(folder_name),
 					}
 				);
 			});
@@ -164,7 +166,7 @@ pub fn Folders(
 					<div class=style::input>
 						<TextInput value=new_folder_name error=folder_name_error on_submit=create_folder_cloned />
 					</div>
-					<button class=style::button on:click=move |_| create_folder(())>Add</button>
+					<button class=style::button on:click=move |_| create_folder()>Add</button>
 				</div>
 			</div>
 		</div>

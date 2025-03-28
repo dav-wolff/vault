@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use argon2::Argon2;
 use chacha20poly1305::{aead::Aead, Key, KeyInit, XChaCha20Poly1305};
@@ -64,7 +64,7 @@ impl<T: CipherSecret> Secret<T> {
 
 #[derive(Clone)]
 pub struct Vault {
-	cipher: Rc<XChaCha20Poly1305>,
+	cipher: Arc<XChaCha20Poly1305>,
 }
 
 impl Vault {
@@ -77,7 +77,7 @@ impl Vault {
 		let cipher = XChaCha20Poly1305::new(&key);
 		
 		Self {
-			cipher: Rc::new(cipher),
+			cipher: Arc::new(cipher),
 		}
 	}
 	

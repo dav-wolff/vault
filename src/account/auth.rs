@@ -24,7 +24,7 @@ mod server {
 	use super::*;
 	
 	use std::{fmt::{self, Debug}, hash::{Hash, Hasher}};
-	use leptos::use_context;
+	use leptos::prelude::use_context;
 	use sha2::digest::FixedOutput;
 	use hmac::Mac;
 	

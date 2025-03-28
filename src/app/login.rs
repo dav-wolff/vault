@@ -1,4 +1,6 @@
-use leptos::*;
+use leptos::prelude::*;
+use leptos::leptos_dom;
+use leptos::task::spawn_local;
 use stylance::{classes, import_style};
 use cache_bust::asset;
 
@@ -16,9 +18,9 @@ enum Form {
 
 #[component]
 pub fn Login(
-	set_user_data: WriteSignal<Option<UserData>>,
+	set_user_data: WriteSignal<Option<UserData>, LocalStorage>,
 ) -> impl IntoView {
-	let (form, set_form) = create_signal(Form::Login);
+	let (form, set_form) = signal(Form::Login);
 	
 	view! {
 		<div class={style::login_box}>
@@ -31,16 +33,16 @@ pub fn Login(
 #[component]
 fn LoginForm<F>(
 	set_form: WriteSignal<Form>,
-	set_user_data: WriteSignal<Option<UserData>>,
+	set_user_data: WriteSignal<Option<UserData>, LocalStorage>,
 	shown: F,
 ) -> impl IntoView
 where
-	F: Fn() -> bool + 'static
+	F: Fn() -> bool + Send + 'static
 {
-	let username = create_rw_signal(String::new());
-	let password = create_rw_signal(String::new());
-	let username_error = create_rw_signal(None);
-	let password_error = create_rw_signal(None);
+	let username = RwSignal::new(String::new());
+	let password = RwSignal::new(String::new());
+	let username_error = RwSignal::new(None);
+	let password_error = RwSignal::new(None);
 	
 	let notify = Notify::from_context();
 	
@@ -54,10 +56,11 @@ where
 		}
 	};
 	
-	let login = move |()| {
+	let login = move || {
 		clear_errors();
 		
-		let Some((username, password)) = with!(|username, password| {
+		let Some((username, password)) = ({
+			let (username, password) = (username.read(), password.read());
 			if username.is_empty() {
 				username_error.set(Some("Please enter a username"));
 			}
@@ -67,10 +70,10 @@ where
 			}
 			
 			if username.is_empty() || password.is_empty() {
-				return None;
+				None
+			} else {
+				Some((username.clone(), Password::new(password.clone())))
 			}
-			
-			Some((username.clone(), Password::new(password.clone())))
 		}) else {
 			return;
 		};
@@ -105,7 +108,7 @@ where
 				Ok(Ok(login_data)) => {
 					let vault = Vault::new(password, salt);
 					
-					set_user_data(Some(UserData {
+					set_user_data.set(Some(UserData {
 						vault,
 						auth: login_data.auth,
 						initial_folders: login_data.folder_names,
@@ -122,7 +125,7 @@ where
 			<TextInput value={username} error={username_error} on_submit={login} />
 			<p class={style::label}>Password</p>
 			<TextInput value={password} error={password_error} input_type={InputType::Password} on_submit={login} />
-			<button class={style::button} on:click=move |_| login(())>Login</button>
+			<button class={style::button} on:click=move |_| login()>Login</button>
 			<hr class={style::hr} />
 			<button
 				class=classes!(style::button, style::switch_button)
@@ -137,18 +140,18 @@ where
 #[component]
 fn CreateAccountForm<F>(
 	set_form: WriteSignal<Form>,
-	set_user_data: WriteSignal<Option<UserData>>,
+	set_user_data: WriteSignal<Option<UserData>, LocalStorage>,
 	shown: F,
 ) -> impl IntoView
 where
-	F: Fn() -> bool + 'static
+	F: Fn() -> bool + Send + 'static
 {
-	let username = create_rw_signal(String::new());
-	let password = create_rw_signal(String::new());
-	let password_confirm = create_rw_signal(String::new());
-	let username_error = create_rw_signal(None);
-	let password_error = create_rw_signal(None);
-	let password_confirm_error = create_rw_signal(None);
+	let username = RwSignal::new(String::new());
+	let password = RwSignal::new(String::new());
+	let password_confirm = RwSignal::new(String::new());
+	let username_error = RwSignal::new(None);
+	let password_error = RwSignal::new(None);
+	let password_confirm_error = RwSignal::new(None);
 	
 	let notify = Notify::from_context();
 	
@@ -166,10 +169,12 @@ where
 		}
 	};
 	
-	let create_account = move |()| {
+	let create_account = move || {
 		clear_errors();
 		
-		let Some((username, password)) = with!(|username, password, password_confirm| {
+		let Some((username, password)) = ({
+			let (username, password, password_confirm) = (username.read(), password.read(), password_confirm.read());
+			
 			if username.is_empty() {
 				username_error.set(Some("Please enter a username"));
 			}
@@ -180,15 +185,15 @@ where
 			
 			if password_confirm.is_empty() {
 				password_confirm_error.set(Some("Please confirm your password"));
-			} else if password != password_confirm {
+			} else if password != *password_confirm {
 				password_confirm_error.set(Some("Passwords don't match"));
 			}
 			
-			if username.is_empty() || password.is_empty() || password != password_confirm {
-				return None;
+			if username.is_empty() || password.is_empty() || password != *password_confirm {
+				None
+			} else {
+				Some((username.clone(), Password::new(password.clone())))
 			}
-			
-			Some((username.clone(), Password::new(password.clone())))
 		}) else {
 			return;
 		};
@@ -216,7 +221,7 @@ where
 				Ok(Ok(login_data)) => {
 					let vault = Vault::new(password, salt);
 					
-					set_user_data(Some(UserData {
+					set_user_data.set(Some(UserData {
 						vault,
 						auth: login_data.auth,
 						initial_folders: login_data.folder_names,
@@ -241,7 +246,7 @@ where
 			<TextInput value={password} error={password_error} input_type={InputType::Password} on_submit={create_account} />
 			<p class={style::label}>Confirm password</p>
 			<TextInput value={password_confirm} error={password_confirm_error} input_type={InputType::Password} on_submit={create_account} />
-			<button class={style::button} on:click=move |_| create_account(())>Create account</button>
+			<button class={style::button} on:click=move |_| create_account()>Create account</button>
 		</div>
 	}
 }

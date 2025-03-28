@@ -1,5 +1,5 @@
+use leptos::prelude::*;
 use http::status::StatusCode;
-use leptos::*;
 use thiserror::Error;
 
 #[derive(Clone, Debug, Error)]
@@ -9,7 +9,7 @@ pub enum AppError {
 	#[error("No Errors")]
 	NoErrors,
 	#[error("Unknown Error")]
-	Unknown(server_fn::error::Error),
+	Unknown(leptos::error::Error),
 }
 
 impl AppError {
@@ -30,13 +30,13 @@ pub fn AppErrorView(
 	#[prop(optional)] errors: Option<RwSignal<Errors>>,
 ) -> impl IntoView {
 	let errors = match outside_errors {
-		Some(e) => create_rw_signal(e),
+		Some(e) => RwSignal::new(e),
 		None => match errors {
 			Some(e) => e,
 			None => {
 				let mut errors = Errors::default();
 				errors.insert_with_default_key(AppError::NoErrors);
-				create_rw_signal(errors)
+				RwSignal::new(errors)
 			},
 		},
 	};

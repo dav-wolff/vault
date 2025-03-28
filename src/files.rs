@@ -1,9 +1,15 @@
-use std::{fs, path::PathBuf, str::FromStr};
+use std::str::FromStr;
 
-use leptos::{server, ServerFnError};
+use leptos::prelude::{server, ServerFnError};
 use thiserror::Error;
 
 use crate::{account::{Auth, AuthError}, vault::{Cipher, FileContent, FileInfo, FolderName}};
+
+#[cfg(feature = "ssr")]
+use std::{fs, path::PathBuf};
+
+#[cfg(feature = "ssr")]
+use leptos::prelude::use_context;
 
 #[allow(unused)]
 use crate::db;
@@ -40,7 +46,7 @@ pub async fn upload_file(auth: Auth, folder: Cipher<FolderName>, info: Cipher<Fi
 	let username = auth.username()?;
 	
 	let db = db::use_db();
-	let files_location: PathBuf = leptos::use_context().unwrap();
+	let files_location: PathBuf = use_context().unwrap();
 	
 	let new_file_transaction = NewFileTransaction::open_file(&files_location).map_err(|_| ServerFnError::ServerError("Server Error".to_owned()))?;
 	
@@ -56,7 +62,7 @@ pub async fn download_file(auth: Auth, file: Cipher<FileInfo>) -> Result<Cipher<
 	let username = auth.username()?;
 	
 	let db = db::use_db();
-	let files_location: PathBuf = leptos::use_context().unwrap();
+	let files_location: PathBuf = use_context().unwrap();
 	
 	let file_id = db.get_file_id(username, &file)?;
 	
